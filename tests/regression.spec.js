@@ -47,6 +47,62 @@ test('native input setter notifies framework-style controlled state', async ({ p
   await expect(input).toHaveValue('Translated: 상태 갱신 확인'); await expect(page.locator('#controlled-value')).toHaveText('Translated: 상태 갱신 확인');
 });
 
+test('Lexical editor updates its internal state, restores, and keeps subsequent typing', async ({ page }) => {
+  await page.goto(`${BASE}/lexical`);
+  const input = await typeInput(page, '#lexical', '안녕하세요. 오늘 날씨가 좋습니다.');
+  await triple(page);
+  await expect(input).toHaveText('Translated: 안녕하세요. 오늘 날씨가 좋습니다.');
+  await expect(page.locator('#lexical-state')).toHaveText('Translated: 안녕하세요. 오늘 날씨가 좋습니다.');
+  await page.getByRole('button', { name: '원문 복구', exact: true }).click();
+  await expect(page.locator('#translate-ai-status')).toContainText('원문을 복구했습니다');
+  await expect(input).toHaveText('안녕하세요. 오늘 날씨가 좋습니다.');
+  await expect(page.locator('#lexical-state')).toHaveText('안녕하세요. 오늘 날씨가 좋습니다.');
+  await page.keyboard.type(' Next');
+  await expect(page.locator('#lexical-state')).toHaveText('안녕하세요. 오늘 날씨가 좋습니다. Next');
+});
+
+test('Lexical multiline and middle-caret triple spaces preserve the source', async ({ page }) => {
+  await page.goto(`${BASE}/lexical`);
+  const input = await typeInput(page, '#lexical', 'First line');
+  await page.keyboard.press('Enter'); await page.keyboard.type('Second line');
+  await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
+  await triple(page);
+  await expect(page.locator('#translate-ai-status')).toContainText('번역했습니다');
+  await expect(page.locator('#lexical-state')).toContainText('Translated: First line');
+  await page.getByRole('button', { name: '원문 복구', exact: true }).click();
+  await expect(page.locator('#translate-ai-status')).toContainText('원문을 복구했습니다');
+  await expect(input).toHaveText('First lineSecond line');
+  await page.keyboard.type('X');
+  await expect(page.locator('#lexical-state')).toContainText('SXecond line');
+});
+
+test('Lexical formatting is not flattened and late replies never overwrite edits', async ({ page }) => {
+  await page.goto(`${BASE}/lexical`);
+  const input = await typeInput(page, '#lexical', 'slow lexical request'); await triple(page);
+  await expect(page.locator('#translate-ai-status')).toContainText('번역하고');
+  await page.keyboard.type(' newer');
+  await expect(page.locator('#translate-ai-status')).toContainText('바뀌어');
+  await expect(page.locator('#lexical-state')).toHaveText('slow lexical request newer');
+  await input.press('ControlOrMeta+a'); await input.press('ControlOrMeta+b'); await input.pressSequentially('Bold content'); await triple(page);
+  await expect(input.locator('strong,b')).toHaveCount(1);
+  await expect(page.locator('#lexical-state')).toHaveText('Bold content   ');
+});
+
+test('Lexical leading and trailing blank paragraphs survive translation and restoration', async ({ page }) => {
+  await page.goto(`${BASE}/lexical`);
+  const input = await typeInput(page, '#lexical', 'Blank lines');
+  await page.keyboard.press('Home'); await page.keyboard.press('Enter');
+  await page.keyboard.press('End'); await page.keyboard.press('Enter');
+  const original = await page.locator('#lexical-state').textContent();
+  await triple(page);
+  await expect(page.locator('#translate-ai-status')).toContainText('입력창을 번역했습니다');
+  await expect(page.locator('#lexical-state')).toContainText('Translated: Blank lines');
+  await page.getByRole('button', { name: '원문 복구', exact: true }).click();
+  await expect(page.locator('#translate-ai-status')).toContainText('원문을 복구했습니다');
+  expect(await page.locator('#lexical-state').textContent()).toBe(original);
+  await expect(input.locator('p')).toHaveCount(3);
+});
+
 test('two spaces, slow spaces and key repeats do not translate', async ({ page }) => {
   const input = await typeInput(page, '#text', 'Do not trigger');
   await page.keyboard.press('Space'); await page.keyboard.press('Space'); await page.waitForTimeout(450);

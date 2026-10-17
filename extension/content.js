@@ -138,7 +138,71 @@
     notify('원문으로 돌아왔습니다.');
   }
 
-  // Editable adapters deliberately refuse structured rich-text editors rather than flatten them.
+  // Only plain text is replaced. Lexical owns its DOM, so use its paste handler,
+  // never replaceChildren on that editor or read private framework objects.
+  function lexicalParagraphs(el) {
+    if (el?.getAttribute('data-lexical-editor') !== 'true') return null;
+    const paragraphs = [...el.childNodes];
+    if (!paragraphs.length || paragraphs.some(p => p.nodeName !== 'P')) return null;
+    for (const p of paragraphs) {
+      for (const n of p.childNodes) {
+        if (n.nodeType === Node.TEXT_NODE) continue;
+        if (n.nodeName === 'BR' && p.childNodes.length === 1) continue;
+        if (n.nodeName !== 'SPAN' || n.getAttribute('data-lexical-text') !== 'true' || n.getAttribute('style') || n.getAttribute('class') || [...n.childNodes].some(c => c.nodeType !== Node.TEXT_NODE)) return null;
+      }
+    }
+    return paragraphs;
+  }
+  function lexicalAdapter(el) {
+    if (!lexicalParagraphs(el)) return null;
+    const read = () => lexicalParagraphs(el)?.map(p => p.textContent).join('\n');
+    return {
+      read,
+      caret: () => {
+        const selection = getSelection(), paragraphs = lexicalParagraphs(el);
+        if (!paragraphs || !selection?.rangeCount || !selection.isCollapsed || !el.contains(selection.anchorNode)) return -1;
+        let offset = 0;
+        for (const p of paragraphs) {
+          if (p.contains(selection.anchorNode)) {
+            const range = document.createRange(); range.selectNodeContents(p); range.setEnd(selection.anchorNode, selection.anchorOffset);
+            return offset + range.toString().length;
+          }
+          offset += p.textContent.length + 1;
+        }
+        return selection.anchorNode === el && selection.anchorOffset === el.childNodes.length ? read().length : -1;
+      },
+      set: async (text, caret = text.length) => {
+        if (!lexicalParagraphs(el)) throw new Error('편집기 내용이 바뀌어 번역을 적용하지 않았습니다.');
+        const before = read();
+        const range = document.createRange();
+        range.setStart(el.firstChild, 0); range.setEnd(el.lastChild, el.lastChild.childNodes.length);
+        const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+        // Let the editor consume selectionchange before its native input handler.
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        if (!focused(el) || read() !== before || !selection.rangeCount || selection.getRangeAt(0).cloneContents().textContent !== el.textContent) throw new Error('입력이 바뀌어 번역을 적용하지 않았습니다.');
+        // Supply only text/plain to the editor's own paste handler. This does not
+        // read or modify the system clipboard, and preserves Lexical's model.
+        const data = new DataTransfer(); data.setData('text/plain', text);
+        const paste = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true, composed: true });
+        el.dispatchEvent(paste);
+        if (!paste.defaultPrevented) throw new Error('이 편집기에서 텍스트 교체를 지원하지 않습니다.');
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        if (read() !== text) throw new Error('편집기가 번역문 적용을 확인하지 못했습니다. 입력 내용을 확인하세요.');
+        let remaining = Math.max(0, Math.min(caret, text.length));
+        for (const p of lexicalParagraphs(el)) {
+          if (remaining > p.textContent.length) { remaining -= p.textContent.length + 1; continue; }
+          const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+          while (walker.nextNode()) {
+            const n = walker.currentNode;
+            if (remaining > n.length) { remaining -= n.length; continue; }
+            range.setStart(n, remaining); range.collapse(true); selection.removeAllRanges(); selection.addRange(range); document.dispatchEvent(new Event('selectionchange')); return;
+          }
+          range.selectNodeContents(p); range.collapse(true); selection.removeAllRanges(); selection.addRange(range); document.dispatchEvent(new Event('selectionchange')); return;
+        }
+      }
+    };
+  }
   function editableRoot(target) {
     if (!(target instanceof Element)) return null;
     if (target instanceof HTMLInputElement) return ['text', 'search'].includes(target.type) && !target.readOnly && !target.disabled ? target : null;
@@ -160,6 +224,7 @@
         }
       };
     }
+    if (el?.getAttribute('data-lexical-editor') === 'true') return lexicalAdapter(el);
     if (!el || [...el.childNodes].some(n => n.nodeType !== Node.TEXT_NODE)) return null;
     return {
       read: () => el.textContent,
@@ -194,16 +259,18 @@
       if (!el.isConnected || !focused(el) || (revisions.get(el) || 0) !== revision || a.read() !== original) {
         notify('입력이 바뀌어 번역을 적용하지 않았습니다.'); return;
       }
-      a.set(result.text); const appliedRevision = revisions.get(el) || 0;
-      notify('입력창을 번역했습니다.', { label: '원문 복구', run: () => {
+      await a.set(result.text); const appliedRevision = revisions.get(el) || 0;
+      notify('입력창을 번역했습니다.', { label: '원문 복구', run: async () => {
         if (!el.isConnected || a.read() !== result.text || (revisions.get(el) || 0) !== appliedRevision) { notify('입력이 바뀌어 원문 복구를 취소했습니다.'); return; }
-        el.focus(); a.set(original, Math.max(0, caret)); notify('입력 원문을 복구했습니다.');
+        try { el.focus(); await a.set(original, Math.max(0, caret)); notify('입력 원문을 복구했습니다.'); }
+        catch (error) { notify(error.message); }
       } });
     } catch (error) { if (jobs.get(el) === job) notify(error.message); }
   }
   document.addEventListener('compositionstart', () => { composing = true; sequence = null; }, true);
   document.addEventListener('compositionend', event => { composing = false; sequence = null; bump(editableRoot(event.target)); }, true);
   document.addEventListener('input', event => { bump(editableRoot(event.composedPath()[0])); }, true);
+  document.addEventListener('beforeinput', event => { bump(editableRoot(event.composedPath()[0])); }, true);
   document.addEventListener('focusout', event => { sequence = null; bump(editableRoot(event.target)); }, true);
   document.addEventListener('pointerdown', () => { sequence = null; }, true);
   document.addEventListener('focusin', () => { void refreshSettings().catch(() => {}); }, true);
@@ -222,7 +289,10 @@
     sequence.count++; sequence.last = now;
     if (sequence.count === 3) {
       const { base, start } = sequence; sequence = null; event.preventDefault(); event.stopPropagation();
-      a.set(base, start); void translateInput(el, a);
+      void (async () => {
+        try { await a.set(base, start); await translateInput(el, a); }
+        catch (error) { notify(error.message); }
+      })();
     } else {
       sequence.expected = value.slice(0, caret) + ' ' + value.slice(caret); sequence.caret = caret + 1;
     }

@@ -40,3 +40,25 @@ test('LIVE LOGIN: ChatGPT OAuth via official CLI, webpage and triple-space input
   await testInfo.attach('chatgpt-login-evidence', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
   console.log(JSON.stringify(evidence));
 });
+
+test('LIVE LOGIN: real ChatGPT translation updates Lexical model and restores Korean input', async ({ context, extensionId, page }, testInfo) => {
+  test.skip(process.env.TRANSLATE_AI_LIVE_LOGIN !== '1', 'Local login test only.');
+  test.setTimeout(180000);
+  const { token } = JSON.parse(await readFile(path.join(stateDirectory(), 'bridge-state.json'), 'utf8'));
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#bridgeToken').fill(token);
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click();
+  await expect(options.locator('#status')).toContainText('저장했습니다'); await options.close();
+  await page.goto(`${BASE}/lexical`); await page.bringToFront();
+  const original = '안녕하세요. 오늘 날씨가 좋습니다.';
+  const input = await typeInput(page, '#lexical', original); const started = Date.now(); await triple(page);
+  await expect(page.locator('#translate-ai-status')).toContainText('입력창을 번역했습니다', { timeout: 120000 });
+  const translated = await input.textContent(); expect(translated).toMatch(/[A-Za-z]/); expect(translated).not.toMatch(/[가-힣]/);
+  await expect(page.locator('#lexical-state')).toHaveText(translated);
+  const elapsedMs = Date.now() - started;
+  await page.screenshot({ path: testInfo.outputPath('chatgpt-lexical.png'), fullPage: true });
+  await page.getByRole('button', { name: '원문 복구', exact: true }).click();
+  await expect(page.locator('#translate-ai-status')).toContainText('원문을 복구했습니다');
+  await expect(page.locator('#lexical-state')).toHaveText(original);
+  console.log(JSON.stringify({ environment: 'Chrome for Testing, local real Lexical editor', livePerplexityVerified: false, provider: 'ChatGPT via official Codex CLI', original, translated, elapsedMs, restored: true }));
+});
