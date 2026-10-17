@@ -1,0 +1,17 @@
+[data-tai-owned="translation"].tai-translation {
+  display: block !important;
+  margin: .5em 0 .7em !important;
+  padding: .2em 0 .2em .85em !important;
+  border-left: 3px solid #5b9482 !important;
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: .96em !important;
+  font-weight: 400 !important;
+  line-height: 1.7 !important;
+  text-align: start !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  opacity: .9;
+}
+[data-tai-owned="translation"].tai-loading { opacity: .55; font-size: .8em !important; }
+[data-tai-owned="translation"].tai-error { border-left-color: #bb6452 !important; font-size: .8em !important; }

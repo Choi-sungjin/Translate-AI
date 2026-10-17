@@ -1,0 +1,27 @@
+{
+  "name": "translate-ai",
+  "version": "1.0.0",
+  "description": "Bilingual webpage reading and triple-space input translation for Chrome",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/text.test.mjs && playwright test",
+    "test:live": "playwright test --project=live",
+    "test:regression": "playwright test --project=regression",
+    "package": "node scripts/package.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Choi-sungjin/Translate-AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Choi-sungjin/Translate-AI/issues"
+  },
+  "homepage": "https://github.com/Choi-sungjin/Translate-AI#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}

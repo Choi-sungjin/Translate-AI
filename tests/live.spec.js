@@ -1,0 +1,28 @@
+import { test, expect, BASE, toggle, triple, typeInput } from './fixtures.js';
+test('LIVE: real translation API through installed extension, bilingual page and Space x3', async ({ context, extensionId, page }, testInfo) => {
+  await page.goto(BASE); await page.bringToFront();
+  // Keep the live request sample small; the regression project exercises larger scenarios.
+  await page.evaluate(() => { document.querySelector('h1').remove(); document.querySelector('#linked').remove(); });
+  await toggle(context, extensionId, page);
+  const translated = page.locator('#article .tai-translation');
+  await expect(translated).not.toHaveClass(/tai-loading/, { timeout: 45000 });
+  await expect(translated).not.toHaveClass(/tai-error/);
+  await expect(translated).toContainText(/[가-힣]/);
+  expect(await page.locator('#article').evaluate(el => el.firstChild.textContent)).toContain('The weather is nice today.');
+  const input = await typeInput(page, '#message', '오늘 날씨가 좋습니다.'); await triple(page);
+  await expect(input).toHaveValue(/[A-Za-z]/, { timeout: 45000 });
+  expect(await input.inputValue()).not.toMatch(/[가-힣]/);
+  const evidence = { browser: context.browser()?.version(), provider: 'MyMemory public API (real network)', pageSource: 'The weather is nice today. We can go for a walk in the park.', pageTranslation: await translated.textContent(), inputSource: '오늘 날씨가 좋습니다.', inputTranslation: await input.inputValue(), actualExtensionId: extensionId, mocked: false };
+  await testInfo.attach('live-translation-evidence', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
+  await page.screenshot({ path: testInfo.outputPath('live-bilingual-and-input.png'), fullPage: true });
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.screenshot({ path: testInfo.outputPath('settings.png'), fullPage: true });
+  await options.close();
+  const external = await context.newPage(); await external.goto('https://example.com/');
+  await toggle(context, extensionId, external);
+  await expect(external.locator('.tai-translation:not(.tai-loading):not(.tai-error)').filter({ hasText: /[가-힣]/ }).first()).toBeVisible({ timeout: 45000 });
+  evidence.publicWebsite = { url: external.url(), translatedParagraphs: await external.locator('.tai-translation:not(.tai-loading):not(.tai-error)').allTextContents() };
+  await external.screenshot({ path: testInfo.outputPath('public-website.png'), fullPage: true });
+  await testInfo.attach('public-website-evidence', { body: JSON.stringify(evidence.publicWebsite, null, 2), contentType: 'application/json' });
+  console.log(JSON.stringify(evidence));
+});

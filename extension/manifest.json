@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Translate AI — 원문과 함께",
+  "version": "1.0.0",
+  "description": "웹페이지 원문·번역 병기와 스페이스바 3회 입력 번역. API 키 없이 시작하고 개인 AI API도 연결하세요.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "activeTab", "contextMenus"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [{
+    "matches": ["https://*/*", "http://*/*"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle",
+    "all_frames": true,
+    "match_about_blank": true
+  }],
+  "action": { "default_title": "Translate AI", "default_popup": "popup.html" },
+  "options_page": "options.html",
+  "commands": {
+    "toggle-page": { "suggested_key": { "default": "Alt+A" }, "description": "원문·번역 병기 켜기/끄기" },
+    "translate-input": { "suggested_key": { "default": "Alt+I" }, "description": "현재 입력창 번역" }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "verifiedAt": "2026-10-17T19:46:41.433Z",
+  "environment": {
+    "os": "Windows",
+    "node": "v24.11.1",
+    "playwright": "1.64.1",
+    "chromeForTesting": "156.0.8078.4",
+    "headless": true,
+    "actualManifestV3Extension": true
+  },
+  "syntaxCheck": "passed",
+  "textUnitTests": {
+    "passed": 3
+  },
+  "browserTests": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "durationMs": 34782.269,
+    "regressionWithLocalTestAPI": 13,
+    "realNetwork": 1
+  },
+  "realTranslation": {
+    "browser": "156.0.8078.4",
+    "provider": "MyMemory public API (real network)",
+    "pageSource": "The weather is nice today. We can go for a walk in the park.",
+    "pageTranslation": "오늘 날씨가 좋네요. 공원에서 산책을 할 수 있습니다.",
+    "inputSource": "오늘 날씨가 좋습니다.",
+    "inputTranslation": "The weather is nice today.",
+    "mocked": false
+  },
+  "publicWebsite": {
+    "url": "https://example.com/",
+    "translatedParagraphs": [
+      "이 도메인은 허가 없이 설명서 예제에 사용하기 위한 것입니다. 이것은 서비스가 아닙니다. 테스트 및 모니터링 목적으로 의존하지 마십시오.",
+      "이 범위는 권한 없이 인증 예제에 사용하기 위한 것입니다. 이것은 서비스가 아닙니다. 테스트 및 모니터링 목적으로 의존하지 마십시오.",
+      "이 도메인 이름은 문서 샘플에만 사용되며 권한이 필요하지 않습니다. 이 서비스는 서비스가 아니므로 테스트 및 모니터링 목적으로 사용해서는 안 됩니다."
+    ]
+  },
+  "cases": [
+    {
+      "title": "bilingual paragraphs preserve original DOM, links and controls; toggle is reversible",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "dynamic paragraphs and changed text are translated once",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "Space x3 translates textarea once and restores exact original",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "single-line and plain contenteditable receive translations",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "native input setter notifies framework-style controlled state",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "two spaces, slow spaces and key repeats do not translate",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "IME composition guards (simulated events) reset cleanly",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "late response never overwrites newer typing",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "API failure preserves exact original and shows actionable error",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "password and rich editors are never flattened or sent",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "turning off page translation ignores pending responses",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "settings persist; disabled shortcut and safe API validation work",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "page progress cannot hide input restoration while another translation completes",
+      "ok": true,
+      "project": "regression"
+    },
+    {
+      "title": "LIVE: real translation API through installed extension, bilingual page and Space x3",
+      "ok": true,
+      "project": "live"
+    }
+  ]
+}

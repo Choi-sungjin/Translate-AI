@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Translate AI · 설정</title><link rel="stylesheet" href="ui.css"></head>
+<body><main class="settings">
+  <div class="brand"><span class="mark" aria-hidden="true">A가</span><span>Translate AI</span><span class="badge">나에게 맞춘 번역</span></div>
+  <header><p class="eyebrow">YOUR WORDS, YOUR WAY</p><h1>읽는 언어와 쓰는 언어를<br>따로 고르세요.</h1><p>원문은 그대로. 번역은 원하는 방식으로.</p></header>
+  <form id="settings" class="stack">
+    <section class="card"><h2 class="section-title">01 &nbsp; 언어와 단축키</h2>
+      <div class="grid"><label>웹페이지 번역 언어<select id="pageLanguage"></select><span class="help">원문 아래에 함께 표시합니다.</span></label><label>입력창 번역 언어<select id="inputLanguage"></select><span class="help">입력한 문장을 이 언어로 바꿉니다.</span></label></div>
+      <hr class="rule"><label class="check"><input id="inputEnabled" type="checkbox">스페이스바 3회 입력 번역 사용</label>
+      <div class="grid" style="margin-top:18px"><label>연타 허용 간격<select id="spaceInterval"><option value="200">빠르게 · 200ms</option><option value="300">기본 · 300ms</option><option value="500">여유 있게 · 500ms</option></select></label><p class="help">일반 입력창·텍스트 영역·단순 편집기를 지원합니다. 번역 후 원문 복구가 가능하며 메시지를 자동으로 전송하지 않습니다.</p></div>
+    </section>
+    <section class="card"><h2 class="section-title">02 &nbsp; 번역 서비스</h2>
+      <label>사용할 서비스<select id="provider"><option value="mymemory">MyMemory 무료 번역 · API 키 없이 시작</option><option value="openai">개인 AI API · OpenAI 호환 / 로컬 서버</option></select></label>
+      <p id="google-help" class="help" style="margin-top:10px">MyMemory의 공개 무료 API를 이용합니다. 익명 사용에는 일일 한도가 있어 긴 문서에는 개인 AI API를 권장합니다. 번역할 텍스트가 MyMemory에 전송됩니다. 민감한 내용에는 신뢰하는 개인 API나 로컬 서버를 선택하세요.</p>
+      <div id="api-fields" class="stack" style="margin-top:20px" hidden>
+        <label>API 주소<input id="apiUrl" type="url" spellcheck="false" placeholder="https://…/v1/chat/completions"><span class="help">chat/completions 전체 주소. HTTPS 또는 localhost/127.0.0.1을 지원합니다.</span></label>
+        <div class="grid"><label>모델 이름<input id="model" type="text" spellcheck="false" placeholder="서버에서 제공하는 모델 이름"></label><label>API 키<input id="apiKey" type="password" autocomplete="off" placeholder="키가 필요 없는 로컬 서버는 비워두세요"></label></div>
+        <p class="help">입력한 키는 이 브라우저의 확장 저장소에 저장되며 동기화되지 않습니다. 번역 텍스트는 지정한 서버에 전송됩니다. 키와 요청 본문을 로그로 남기지 않습니다.</p>
+      </div>
+      <div class="actions"><button type="submit" class="primary">설정 저장</button><button type="button" id="test" class="secondary">저장한 설정으로 연결 확인</button></div>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </section>
+    <section class="card"><div class="row"><div><h2>필요할 때만, 필요한 만큼</h2><p class="small" style="margin-top:8px">페이지 번역 버튼이나 입력 번역 단축키를 실행했을 때만 번역을 요청합니다. 기록 수집과 분석용 추적은 없습니다.</p></div></div><hr class="rule"><div class="row"><span class="small">번역 결과 캐시는 메모리에만 보관됩니다.</span><button id="clear" type="button" class="quiet">캐시 비우기</button></div></section>
+  </form>
+</main><script src="options.js" type="module"></script></body></html>
