@@ -43,5 +43,14 @@ export async function triple(page, gap = 40) {
   for (let i = 0; i < 3; i++) { await page.keyboard.press('Space'); if (i < 2) await page.waitForTimeout(gap); }
 }
 export async function typeInput(page, selector, text) {
-  const input = page.locator(selector); await input.fill(text); await input.focus(); await page.waitForTimeout(100); return input;
+  // document_idle injection can finish after page.load on a busy CI runner.
+  // Wait for the real content-script transport rather than an arbitrary sleep.
+  const worker = page.context().serviceWorkers()[0];
+  await expect.poll(() => worker.evaluate(async url => {
+    const tab = (await chrome.tabs.query({})).find(t => t.url === url);
+    if (!tab) return false;
+    try { const status = await chrome.tabs.sendMessage(tab.id, { type: 'TAI_PAGE_STATUS' }, { frameId: 0 }); return typeof status?.enabled === 'boolean'; }
+    catch { return false; }
+  }, page.url())).toBe(true);
+  const input = page.locator(selector); await input.fill(text); await input.focus(); return input;
 }
