@@ -106,3 +106,25 @@ test('page progress cannot hide input restoration while another translation comp
   await expect(page.locator('#article .tai-translation')).toHaveText('Translated: slow concurrent page');
   await page.getByRole('button', { name: '원문 복구', exact: true }).click(); await expect(input).toHaveValue('원문 복구 유지');
 });
+
+test('ChatGPT login bridge settings and both translation paths work without an API key', async ({ context, extensionId, page }) => {
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#apiKey').fill('');
+  await options.locator('#provider').selectOption('codex');
+  await options.locator('#bridgeToken').fill('b'.repeat(64));
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('저장했습니다');
+  await options.locator('#bridge-status').click(); await expect(options.locator('#status')).toContainText('로그인 연결됨');
+  await options.close(); await page.bringToFront();
+  await toggle(context, extensionId, page); await expect(page.locator('#article .tai-translation')).toContainText('Login translated:');
+  const input = await typeInput(page, '#message', '계정 로그인으로 번역'); await triple(page); await expect(input).toHaveValue('Login translated: 계정 로그인으로 번역');
+});
+
+test('invalid ChatGPT pairing code preserves input and never falls back to another service', async ({ context, extensionId, page, request }) => {
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#provider').selectOption('codex'); await options.locator('#bridgeToken').fill('c'.repeat(64));
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('저장했습니다');
+  await options.close(); await page.bringToFront();
+  const input = await typeInput(page, '#text', '잘못된 연결 코드 시험'); await triple(page);
+  await expect(page.locator('#translate-ai-status')).toContainText('연결 코드가 다릅니다'); await expect(input).toHaveValue('잘못된 연결 코드 시험');
+  expect((await (await request.get(`${BASE}/requests`)).json()).some(r => r.text === '잘못된 연결 코드 시험')).toBe(false);
+});

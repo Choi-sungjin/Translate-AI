@@ -1,5 +1,8 @@
 import { test, expect, BASE, toggle, triple, typeInput } from './fixtures.js';
 test('LIVE: real translation API through installed extension, bilingual page and Space x3', async ({ context, extensionId, page }, testInfo) => {
+  const freeSettings = await context.newPage(); await freeSettings.goto(`chrome-extension://${extensionId}/options.html`);
+  await freeSettings.locator('#provider').selectOption('mymemory'); await freeSettings.getByRole('button', { name: '설정 저장', exact: true }).click();
+  await expect(freeSettings.locator('#status')).toContainText('저장했습니다'); await freeSettings.close();
   await page.goto(BASE); await page.bringToFront();
   // Keep the live request sample small; the regression project exercises larger scenarios.
   await page.evaluate(() => { document.querySelector('h1').remove(); document.querySelector('#linked').remove(); });

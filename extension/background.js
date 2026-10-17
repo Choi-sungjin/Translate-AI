@@ -53,14 +53,34 @@ async function detectSource(text) {
   return 'en';
 }
 let freeQuotaBlocked = false;
-async function translateOne(text, target, s) {
-  const key = await digest(JSON.stringify([s.provider, s.apiUrl, s.model, s.apiKey, target, text, 'v1']));
+async function bridgeRequest(route, s, data) {
+  if (!s.bridgeToken) throw new Error('설정에서 ChatGPT 로컬 연결 코드를 저장하세요.');
+  // Keep this bounded long-running request alive in the MV3 worker.
+  const heartbeat = setInterval(() => { void chrome.runtime.getPlatformInfo(); }, 20000);
+  try {
+    const response = await fetch(`http://127.0.0.1:18458/v1/${route}`, {
+      method: data ? 'POST' : 'GET', headers: { Authorization: `Bearer ${s.bridgeToken}`, ...(data ? { 'Content-Type': 'application/json' } : {}) },
+      ...(data ? { body: JSON.stringify(data) } : {}), credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(120000)
+    });
+    const result = await response.json();
+    if (!response.ok || result.error) throw new Error(result.error || 'ChatGPT 연결에 실패했습니다.');
+    return result;
+  } catch (error) {
+    if (error.name === 'TypeError') throw new Error('ChatGPT 로컬 연결이 꺼져 있습니다. Start-Translate-AI.cmd를 실행하세요.');
+    if (['TimeoutError', 'AbortError'].includes(error.name)) throw new Error('ChatGPT 번역 대기 시간이 초과되었습니다. 잠시 후 다시 시도하세요.');
+    throw error;
+  } finally { clearInterval(heartbeat); }
+}
+async function translateOne(text, target, s, mode) {
+  const key = await digest(JSON.stringify([s.provider, s.apiUrl, s.model, s.apiKey, s.bridgeToken, target, text, 'v1']));
   if (cache.has(key)) return cache.get(key);
   if (pending.has(key)) return pending.get(key);
   const promise = schedule(async () => {
     const content = text.trim();
     let translated;
-    if (s.provider === 'mymemory') {
+    if (s.provider === 'codex') {
+      translated = (await bridgeRequest('translate', s, { text: content, target, mode })).text;
+    } else if (s.provider === 'mymemory') {
       if (freeQuotaBlocked) throw new Error('무료 번역의 일일 한도에 도달했습니다. 개인 AI API를 설정하거나 나중에 다시 시도하세요.');
       const source = await detectSource(content);
       if (source === target) return text;
@@ -112,13 +132,16 @@ async function handle(message, sender) {
     case 'TAI_CLEAR_CACHE':
       if (!trustedPage) throw new Error('설정 페이지에서 변경하세요.');
       cache.clear(); freeQuotaBlocked = false; return true;
+    case 'TAI_BRIDGE_STATUS':
+      if (!trustedPage) throw new Error('설정 페이지에서 확인하세요.');
+      return bridgeRequest('status', await getSettings());
     case 'TAI_TRANSLATE': {
       if (typeof message.text !== 'string' || !message.text.trim() || message.text.length > MAX_TEXT) throw new Error('번역할 텍스트는 1~12,000자로 입력하세요.');
       if (!['page', 'input', 'test'].includes(message.mode)) throw new Error('잘못된 번역 모드입니다.');
       const s = await getSettings();
       if (message.mode === 'input' && !s.inputEnabled) throw new Error('입력창 번역이 꺼져 있습니다.');
       const target = message.mode === 'page' ? s.pageLanguage : s.inputLanguage;
-      return { text: await translateOne(message.text, target, s), target, provider: s.provider };
+      return { text: await translateOne(message.text, target, s, message.mode), target, provider: s.provider };
     }
     default: throw new Error('지원하지 않는 요청입니다.');
   }

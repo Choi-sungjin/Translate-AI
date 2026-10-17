@@ -8,3 +8,5 @@ dist/
 *.log
 *.rea.backup*
 profiles/
+bridge-state.json
+*.pid

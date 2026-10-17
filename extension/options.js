@@ -1,12 +1,13 @@
 import { LANGUAGES } from './settings.js';
 const form = document.querySelector('#settings'), status = document.querySelector('#status');
-const keys = ['provider', 'pageLanguage', 'inputLanguage', 'inputEnabled', 'spaceInterval', 'apiUrl', 'model', 'apiKey'];
+const keys = ['provider', 'pageLanguage', 'inputLanguage', 'inputEnabled', 'spaceInterval', 'apiUrl', 'model', 'apiKey', 'bridgeToken'];
 for (const id of ['pageLanguage', 'inputLanguage']) {
   for (const [value, name] of Object.entries(LANGUAGES)) document.getElementById(id).add(new Option(name, value));
 }
 function displayProvider() {
-  const ai = document.querySelector('#provider').value === 'openai';
-  document.querySelector('#api-fields').hidden = !ai; document.querySelector('#google-help').hidden = ai;
+  const provider = document.querySelector('#provider').value;
+  document.querySelector('#api-fields').hidden = provider !== 'openai'; document.querySelector('#google-help').hidden = provider !== 'mymemory';
+  document.querySelector('#codex-fields').hidden = provider !== 'codex';
 }
 function message(text, error = false) { status.textContent = text; status.className = `status ${error ? 'error' : 'success'}`; }
 async function send(value) {
@@ -20,6 +21,13 @@ async function load() {
   displayProvider();
 }
 document.querySelector('#provider').addEventListener('change', displayProvider);
+document.querySelector('#open-bridge').addEventListener('click', () => chrome.tabs.create({ url: 'http://127.0.0.1:18458/' }));
+document.querySelector('#bridge-status').addEventListener('click', async event => {
+  const button = event.currentTarget; button.disabled = true;
+  try { const result = await send({ type: 'TAI_BRIDGE_STATUS' }); message(result.message, !result.loggedIn); }
+  catch (error) { message(error.message, true); }
+  finally { button.disabled = false; }
+});
 form.addEventListener('submit', async event => {
   event.preventDefault(); const settings = {};
   for (const key of keys) { const el = document.getElementById(key); settings[key] = el.type === 'checkbox' ? el.checked : el.value; }

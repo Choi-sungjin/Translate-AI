@@ -5,7 +5,8 @@ export default defineConfig({
   use: { trace: 'retain-on-failure' },
   projects: [
     { name: 'regression', testMatch: /regression\.spec\.js/ },
-    { name: 'live', testMatch: /live\.spec\.js/ }
+    { name: 'live', testMatch: /live\.spec\.js/ },
+    { name: 'login', testMatch: /login\.spec\.js/ }
   ],
   webServer: { command: 'node tests/server.mjs', url: 'http://127.0.0.1:18457/health', reuseExistingServer: false, timeout: 15000 }
 });

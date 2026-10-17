@@ -1,0 +1,22 @@
+{
+  "verifiedAt": "2026-10-17T20:07:21.122Z",
+  "browser": "156.0.8078.4",
+  "provider": "Official Codex CLI 0.162.1 with existing ChatGPT login",
+  "mocked": false,
+  "apiKeyUsed": false,
+  "pageSource": "The weather is nice today. We can go for a walk in the park.",
+  "pageTranslation": "오늘은 날씨가 좋아요. 공원에 산책하러 가도 좋겠어요.",
+  "pageElapsedMs": 5007,
+  "inputSource": "오늘 날씨가 좋습니다.",
+  "inputTranslation": "The weather is nice today.",
+  "inputElapsedMs": 3541,
+  "originalRestored": true,
+  "stats": {
+    "startTime": "2026-10-17T20:07:21.122Z",
+    "duration": 12942.582,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

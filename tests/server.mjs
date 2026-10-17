@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { createBridge } from '../bridge/server.mjs';
 const requests = [];
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Translate AI — browser verification</title><style>body{font:18px/1.7 system-ui;margin:50px auto;max-width:900px;background:#f6f7f1;color:#203a32}main{padding:35px;background:white;border-radius:20px}input,textarea,[contenteditable]{display:block;font:18px/1.5 system-ui;width:85%;padding:14px;margin:15px 0;border:1px solid #a6b8ae;border-radius:8px}textarea{height:100px}.inputs{margin:30px}label{display:block}code{background:#eee}</style></head><body>
 <main><h1>Read the world in two languages.</h1><p id="article">The weather is nice today. We can go for a walk in the park.</p><p id="linked">This paragraph keeps its <a href="#example" id="link">original link</a> and <strong>emphasis</strong>.</p><button id="original-button" onclick="this.dataset.clicks=Number(this.dataset.clicks||0)+1">Original button</button><pre><code id="code">const answer = 42;</code></pre><p hidden id="hidden">Hidden text must stay hidden.</p></main>
@@ -20,3 +21,7 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('content-type', 'text/html; charset=utf-8'); res.end(html);
 });
 server.listen(18457, '127.0.0.1');
+if (process.env.TRANSLATE_AI_LIVE_LOGIN !== '1') {
+  const bridge = createBridge({ token: 'b'.repeat(64), cwd: '.', status: async () => ({ loggedIn: true, method: 'ChatGPT', message: 'ChatGPT 계정 로그인 연결됨 (테스트)' }), translate: async ({ text }) => `Login translated: ${text}` });
+  bridge.listen(18458, '127.0.0.1');
+}

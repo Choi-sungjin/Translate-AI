@@ -9,7 +9,7 @@ async function files(dir) {
   return result;
 }
 let count = 0;
-for (const file of [...await files('extension'), ...await files('scripts'), ...await files('tests'), 'playwright.config.js']) {
+for (const file of [...await files('extension'), ...await files('bridge'), ...await files('scripts'), ...await files('tests'), 'playwright.config.js']) {
   if (/\.(m?js)$/.test(file)) {
     const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
     if (result.status !== 0) throw new Error(result.stderr); count++;
