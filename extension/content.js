@@ -22,7 +22,7 @@
       toastHost = document.createElement('div');
       toastHost.dataset.taiOwned = 'ui';
       toastHost.id = 'translate-ai-status';
-      toastHost.style.cssText = 'position:fixed!important;bottom:22px!important;right:22px!important;z-index:2147483647!important;max-width:min(440px,calc(100vw - 32px))!important;';
+      toastHost.style.cssText = 'position:fixed!important;top:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:2147483647!important;width:max-content!important;max-width:min(440px,calc(100vw - 32px))!important;';
       toastRoot = toastHost.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
       style.textContent = ':host{all:initial}.box{font:13px/1.6 system-ui,sans-serif;background:#132c29;color:#fff;padding:13px 16px;border-radius:13px;box-shadow:0 7px 30px #0003;display:flex;align-items:center;gap:12px}button{font:inherit;white-space:nowrap;cursor:pointer;border:1px solid #aac7be;background:#234b43;color:white;border-radius:7px;padding:5px 10px}button:focus-visible{outline:3px solid #d4e8a3}';

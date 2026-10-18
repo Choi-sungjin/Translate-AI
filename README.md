@@ -4,7 +4,7 @@
 
 **v1.1.0: 내 ChatGPT 계정 로그인으로 번역합니다.** 이 PC에서 실행하는 공식 Codex CLI가 로그인을 처리하며 별도 OpenAI API 키가 필요하지 않습니다. 기존 무료 번역·개인 API 방식도 선택할 수 있습니다.
 
-**v1.1.1 (저장소 최신 코드):** Perplexity에서 관찰한 Lexical 일반 텍스트 입력 구조에 대응했습니다. 실제 Lexical 엔진에서 번역·복구·내부 상태 갱신을 검사했습니다. 사용자의 일상 Chrome 설치 및 실제 Perplexity의 최종 동작 검증은 아직 대기 중입니다. [검증 범위](docs/PERPLEXITY.md)
+**v1.1.2 (저장소 최신 코드):** 사용자의 실제 Chrome에서 ChatGPT 연결, Perplexity 입력 번역·원문 복구·영어 질문 전송과 일반 웹사이트 입력 번역을 확인했습니다. 좁은 창에서 알림이 전송 버튼을 가리지 않도록 위치를 수정했습니다. 실제 사이트의 페이지 병기 검증은 번역 시작 조작을 기다리고 있습니다. [검증 범위](docs/PERPLEXITY.md)
 
 ![ChatGPT 로그인으로 실제 브라우저 번역 실행](docs/screenshots/chatgpt-bilingual-and-input.png)
 
@@ -86,7 +86,7 @@ npm run package
 - `npm run test:live`: 실제 MyMemory API, 공개 사이트, 입력창 번역 검사. 네트워크 연결과 무료 서비스의 잔여 한도가 필요합니다.
 - `npm run test:login`: 실행 중인 로컬 연결 프로그램과 기존 ChatGPT 로그인으로 실제 확장 번역을 시험. 계정 사용량을 소비합니다.
 - `npm test`: 텍스트·로컬 연결 보안 시험 + 회귀·무료 API 브라우저 시험. ChatGPT 로그인 시험은 별도입니다.
-- `npm run package`: `dist/Translate-AI-1.1.1.zip`(확장만), `dist/Translate-AI-1.1.1-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
+- `npm run package`: `dist/Translate-AI-1.1.2.zip`(확장만), `dist/Translate-AI-1.1.2-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
 
 검증 범위와 실제 번역 예문: [ChatGPT 로그인 검증 보고서](docs/CHATGPT-LOGIN.md), [v1.0 검증 보고서](docs/VERIFICATION.md). 설정 화면: [스크린샷](docs/screenshots/chatgpt-settings.png).
 

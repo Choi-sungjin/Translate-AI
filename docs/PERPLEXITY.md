@@ -2,7 +2,17 @@
 
 ## 현재 상태
 
-**사용자의 일상 Chrome 설치 및 실제 Perplexity 번역 성공은 아직 검증하지 못했습니다.** 브라우저 자동화 도구가 `chrome://extensions` 접근을 거절하여 수동 설치/새로고침을 요청한 상태입니다. 이 제한을 우회하거나 브라우저 프로필을 직접 수정하지 않았습니다.
+**사용자의 일상 Chrome에서 확장 설치, ChatGPT 연결, Perplexity와 일반 웹사이트의 입력 번역을 확인했습니다.** 사용자가 확장을 설치하고 로컬 연결 코드를 저장한 뒤 검사했습니다. 실제 사이트의 원문·번역 병기는 아직 검증 완료 전입니다. 도구의 Alt+A 입력으로 Chrome 확장 명령이 시작되지 않아 두 탭에서 번역 시작 버튼을 직접 눌러 달라고 요청한 상태입니다. 브라우저 내부 페이지 제한을 우회하거나 프로필을 직접 수정하지 않았습니다.
+
+## 실제 사용 중인 Chrome에서 확인한 내용
+
+- Perplexity에서 `안녕하세요. 오늘 날씨가 좋습니다.` + Space 3회 → `Hello. The weather is nice today.`
+- Perplexity에서 `반갑습니다. 번역 기능을 확인하고 있습니다.` → `Nice to meet you. I'm testing the translation feature.` → 원문 복구 버튼으로 한국어 원문 복원.
+- Perplexity에서 `이 답변을 한 문장으로 요약해 주세요.` → `Please summarize this answer in one sentence.` → 번역 완료를 확인한 뒤 Enter 전송. 실제 대화에 이 영어 질문이 표시되는 것까지 확인.
+- 공개 웹사이트 `https://httpbin.org/forms/post`의 textarea에서 `이 문장은 번역 기능을 확인하기 위한 테스트입니다.` + Space 3회 → `This sentence is a test to check the translation feature.` 이 폼은 제출하지 않았습니다.
+- 로컬 연결 프로그램을 다시 실행했고 공식 CLI의 ChatGPT 로그인 상태가 정상임을 확인했습니다.
+
+좁은 화면(약 634 × 455)에서 원문 복구 버튼과 Perplexity 제출 버튼의 화면 영역이 겹치는 문제도 실제 DOM 좌표로 확인했습니다. **v1.1.2에서는 알림을 화면 위쪽으로 이동**했습니다. 별도 테스트 Chrome에서 알림이 보이는 동안 아래쪽 전송 버튼을 클릭하고 번역된 값이 전달되는 회귀 검사를 통과했습니다. 이 위치 수정은 확장을 새로고침하고 웹페이지를 다시 열어야 적용되며, 사용자의 실제 Chrome에서 수정 후 위치는 아직 확인하지 않았습니다.
 
 실제 로그인된 Perplexity의 새 탭에서 입력창을 관찰하고 테스트 문장을 입력했습니다. `#ask-input`은 `data-lexical-editor="true"`인 contenteditable이며, 문장은 `<p><span data-lexical-text="true">…</span></p>` 안에 들어갑니다. 기존 확장은 텍스트 노드만 있는 contenteditable을 지원하므로 이 입력창을 처리하지 못했습니다.
 
@@ -31,8 +41,7 @@ Lexical의 상태 관리 원리는 [공식 설명](https://lexical.dev/docs/intr
 | 실제 ChatGPT 로그인 연결 화면 | 통과 |
 | 실제 ChatGPT 원문·번역 병기와 textarea Space 3회 | 통과 |
 | 실제 ChatGPT Lexical Space 3회·내부 상태·복구 | 통과 |
-| 사용자의 일상 Chrome에 설치·연결 | 수동 설치 확인 대기 |
-| 실제 웹사이트 및 Perplexity 원문·번역 병기/Space 3회 | 설치 후 확인 필요 |
+| 좁은 화면에서 번역 알림이 보일 때 전송 버튼 클릭 | 통과 |
 
 실제 계정 요청 예문(API 키 및 가짜 응답 사용 없음):
 
@@ -42,10 +51,8 @@ Lexical의 상태 관리 원리는 [공식 설명](https://lexical.dev/docs/intr
 
 ## 실제 Chrome에서 남은 절차
 
-1. `chrome://extensions`에서 이 저장소의 `extension` 폴더를 로드하거나 기존 Translate AI를 새로고침합니다.
-2. 로컬 연결 프로그램을 실행하고 확장 설정에 연결 코드를 저장하여 ChatGPT 상태를 확인합니다.
-3. 이미 열린 대상 웹페이지를 새로고침합니다.
-4. 공개 영어 페이지와 Perplexity 영어 답변에서 Alt+A로 병기/해제를 확인합니다.
-5. Perplexity 새 입력창에서 테스트 문장을 쓴 뒤 Space를 빠르게 3번 누릅니다. 영어 결과, 원문 복구, 후속 타이핑과 정상 전송 내용을 확인합니다.
+1. v1.1.2 알림 위치 수정을 반영하려면 `chrome://extensions`에서 Translate AI를 새로고침하고 대상 웹페이지도 새로고침합니다.
+2. 열어둔 Example Domain과 Perplexity 영어 답변 탭에서 확장 메뉴의 **이 페이지 번역하기**를 누릅니다.
+3. 원문 유지, 한국어 번역 표시, 링크 유지, 원문만 보기 동작을 확인합니다.
 
 실제 사이트 구조는 변경될 수 있습니다. 이 문서의 로컬 테스트 결과가 모든 Lexical 버전이나 모든 사이트 호환성을 보장하지 않습니다.

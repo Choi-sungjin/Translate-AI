@@ -47,6 +47,23 @@ test('native input setter notifies framework-style controlled state', async ({ p
   await expect(input).toHaveValue('Translated: 상태 갱신 확인'); await expect(page.locator('#controlled-value')).toHaveText('Translated: 상태 갱신 확인');
 });
 
+test('translation notice leaves a bottom-right chat send button clickable on small windows', async ({ page }) => {
+  await page.setViewportSize({ width: 634, height: 455 });
+  await page.locator('.inputs').evaluate(section => {
+    section.style.cssText = 'position:fixed;bottom:0;left:0;right:0;margin:0;background:white;';
+    for (const child of section.children) if (!child.querySelector('#text')) child.style.display = 'none';
+    const button = document.createElement('button'); button.id = 'chat-send'; button.textContent = 'Send test message';
+    button.style.cssText = 'position:fixed;right:20px;bottom:25px;width:70px;height:42px';
+    button.onclick = () => { document.body.dataset.sent = document.querySelector('#text').value; };
+    section.append(button);
+  });
+  const input = await typeInput(page, '#text', '전송 버튼 확인'); await triple(page);
+  await expect(input).toHaveValue('Translated: 전송 버튼 확인');
+  await expect(page.getByRole('button', { name: '원문 복구', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Send test message', exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-sent', 'Translated: 전송 버튼 확인');
+});
+
 test('Lexical editor updates its internal state, restores, and keeps subsequent typing', async ({ page }) => {
   await page.goto(`${BASE}/lexical`);
   const input = await typeInput(page, '#lexical', '안녕하세요. 오늘 날씨가 좋습니다.');
