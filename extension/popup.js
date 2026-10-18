@@ -1,4 +1,5 @@
 import { LANGUAGES } from './settings.js';
+document.querySelector('#version').textContent = `v${chrome.runtime.getManifest().version}`;
 const button = document.querySelector('#toggle'), status = document.querySelector('#status');
 let tab;
 async function update() {

@@ -14,7 +14,7 @@
 
 1. 최신 v1.2.0은 이 저장소를 복제하거나 소스 ZIP을 내려받습니다. [릴리스](https://github.com/Choi-sungjin/Translate-AI/releases)의 `Translate-AI-1.1.0-desktop.zip`은 이전 버전입니다.
 2. Chrome 주소창에 `chrome://extensions`를 입력하고 **개발자 모드**를 켭니다.
-3. **압축해제된 확장 프로그램을 로드합니다**를 누르고 **`extension` 폴더**를 선택합니다. 확장만 들어 있는 `Translate-AI-1.1.0.zip`을 푼 경우에는 `manifest.json`이 있는 폴더를 선택합니다.
+3. **압축해제된 확장 프로그램을 로드합니다**를 누르고 **`extension` 폴더**를 선택합니다. 확장만 들어 있는 `Translate-AI-1.2.0.zip`을 푼 경우에는 `manifest.json`이 있는 폴더를 선택합니다.
 4. 기존 웹페이지를 새로고침하고 툴바에서 Translate AI를 고정합니다.
 
 확장 자체는 빌드 과정 없이 로드할 수 있습니다. ChatGPT 로그인 번역에는 아래 로컬 연결 프로그램이 필요합니다. Chrome 웹 스토어에 게시한 제품은 아닙니다.
@@ -88,7 +88,7 @@ npm run package
 - `npm run test:live`: 실제 MyMemory API, 공개 사이트, 입력창 번역 검사. 네트워크 연결과 무료 서비스의 잔여 한도가 필요합니다.
 - `npm run test:login`: 실행 중인 로컬 연결 프로그램과 기존 ChatGPT 로그인으로 실제 확장 번역을 시험. 계정 사용량을 소비합니다.
 - `npm test`: 텍스트·로컬 연결 보안 시험 + 회귀·무료 API 브라우저 시험. ChatGPT 로그인 시험은 별도입니다.
-- `npm run package`: `dist/Translate-AI-1.1.2.zip`(확장만), `dist/Translate-AI-1.1.2-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
+- `npm run package`: `dist/Translate-AI-1.2.0.zip`(확장만), `dist/Translate-AI-1.2.0-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
 
 검증 범위와 실제 번역 예문: [ChatGPT 로그인 검증 보고서](docs/CHATGPT-LOGIN.md), [v1.0 검증 보고서](docs/VERIFICATION.md). 설정 화면: [스크린샷](docs/screenshots/chatgpt-settings.png).
 
