@@ -6,7 +6,7 @@
 
 **v1.3.0:** 설정 화면과 팝업에서 **GPT-6.1 Sol / GPT-6 Luna / GPT-5.6 Luna**를 선택할 수 있습니다. 실제 로그인 비교에서 입력 번역 중앙값은 각각 7.53/5.68/6.00초, 문단 3개 묶음은 8.70/6.75/6.01초였습니다. 모델·방식당 3회 측정이므로 모든 자료에서의 속도 순위를 보장하지 않습니다. [선택 방법·속도·번역 품질 비교](docs/MODELS-1.3.0.md)
 
-**Windows 실행 파일 보완:** 시작 시 실행 중인 연결 프로그램의 버전을 검사합니다. 구버전이 남아 있으면 준비 완료로 표시하지 않습니다. **`Restart-Translate-AI.cmd`**는 이 폴더에서 시작한 연결 프로그램만 재시작하고 버전·모델 선택 지원을 검사한 뒤 결과 창을 유지합니다. 최초 v1.3.0 ZIP 사용자는 같은 릴리스의 **`Translate-AI-1.3.0-launcher-update.zip`**을 기존 설치 폴더에 덮어 적용하세요. Git으로 업데이트한 폴더에는 포함돼 있습니다. [적용 방법](docs/LAUNCHER-UPDATE-1.3.0.md)
+**Windows 실행 파일 보완:** 시작 시 실행 중인 연결 프로그램의 버전을 검사합니다. 구버전이 남아 있으면 준비 완료로 표시하지 않습니다. **`Restart-Translate-AI.cmd`**는 PID 기록이 없어도 실제 연결 포트를 조회하고 이 프로젝트의 실행 경로를 확인한 뒤 재시작합니다. 버전·모델 선택 지원을 검사하고 결과 창을 유지합니다. 최초 v1.3.0 ZIP 사용자는 같은 릴리스의 **`Translate-AI-1.3.0-launcher-update-r2.zip`**을 기존 설치 폴더에 덮어 적용하세요. Git으로 업데이트한 폴더에는 포함돼 있습니다. [적용 방법](docs/LAUNCHER-UPDATE-1.3.0.md)
 
 **v1.2.2:** 팝업 검색창 뒤에 번역 안내·복구 버튼이 가려지거나 복구 시 검색창이 닫히는 문제를 수정했습니다. 실제 Comet에서 NVIDIA 문서 22/22 병기·페이지 원문 복원을 확인했습니다. Chrome·Comet 모두 검색창 스페이스 3회 번역, 30초 이상 복구 버튼 유지, 입력 원문 복구와 검색창 열림 유지에 통과했습니다. [최종 검증 기록](docs/SEARCH-1.2.2.md)
 
@@ -101,7 +101,7 @@ npm run package
 - `npm run test:login`: 실행 중인 로컬 연결 프로그램과 기존 ChatGPT 로그인으로 실제 확장 번역을 시험. 계정 사용량을 소비합니다.
 - `npm run test:login:isolated`: 별도 포트의 연결 프로그램과 Chrome for Testing에서 실제 ChatGPT 번역을 시험. 사용자의 설치된 Chrome/Comet 검증과 구분합니다.
 - `npm run benchmark:models`: 세 모델의 실제 로그인 번역 속도와 번역문을 비교합니다. 계정 사용량을 소비합니다.
-- Windows 실행 파일 검사: `powershell.exe -NoProfile -File tests/windows-launcher.test.ps1`. 실제 프로세스·네트워크·브라우저·사용자 앱 데이터 쓰기를 모의 처리한 8개 시나리오입니다.
+- Windows 실행 파일 검사: `powershell.exe -NoProfile -File tests/windows-launcher.test.ps1`. 실제 프로세스·네트워크·브라우저·사용자 앱 데이터 쓰기를 모의 처리한 12개 시나리오입니다.
 - `npm test`: 텍스트·로컬 연결 보안 시험 + 회귀·무료 API 브라우저 시험. ChatGPT 로그인 시험은 별도입니다.
 - `npm run package`: `dist/Translate-AI-1.3.0.zip`(확장만), `dist/Translate-AI-1.3.0-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
 

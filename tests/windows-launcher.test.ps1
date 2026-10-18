@@ -44,8 +44,12 @@ function Get-CimInstance {
   [CmdletBinding()] param($ClassName, $Filter)
   return [pscustomobject]@{ Name='node.exe'; CommandLine=$global:launcherTestState.command }
 }
+function Get-NetTCPConnection {
+  [CmdletBinding()] param($LocalAddress, $LocalPort, $State)
+  foreach ($listenerPid in $global:launcherTestState.listeners) { [pscustomobject]@{ OwningProcess=$listenerPid } }
+}
 function Reset-Fixture($health) {
-  $global:launcherTestState = @{ health=@($health); cursor=0; starts=[System.Collections.Generic.List[string]]::new(); stops=[System.Collections.Generic.List[int]]::new(); status=$null; pidExists=$true; command=(Join-Path $projectDir 'bridge\server.mjs') }
+  $global:launcherTestState = @{ health=@($health); cursor=0; starts=[System.Collections.Generic.List[string]]::new(); stops=[System.Collections.Generic.List[int]]::new(); status=$null; pidExists=$true; listeners=@(); command=(Join-Path $projectDir 'bridge\server.mjs') }
 }
 function Assert($condition, $message) { if (-not $condition) { throw "FAIL: $message" } }
 function Expect-Failure($file, $pattern) {
@@ -88,4 +92,28 @@ Assert ($global:launcherTestState.stops.Count -eq 0 -and $global:launcherTestSta
 Reset-Fixture @($oldHealth, $null, $oldHealth)
 Expect-Failure 'restart-bridge.ps1' '*Unexpected bridge version*'
 Assert ($global:launcherTestState.status.step -eq 'failed') 'Failed version check must be recorded, never ready'
-Write-Output 'PASS: 8 Windows launcher scenarios (mocked process, network, browser, and app-data writes).'
+Reset-Fixture @($oldHealth, $null, $newHealth, $newHealth)
+$global:launcherTestState.pidExists = $false
+$global:launcherTestState.listeners = @(23456)
+$global:launcherTestState.command = '"C:\Program Files\nodejs\node.exe" "' + (Join-Path $projectDir 'bridge\server.mjs') + '"'
+& (Join-Path $launcherDir 'restart-bridge.ps1') | Out-Null
+Assert ($global:launcherTestState.stops.Count -eq 1 -and $global:launcherTestState.status.step -eq 'ready') 'Missing PID record with a live owned listener must still restart'
+
+Reset-Fixture @($oldHealth)
+$global:launcherTestState.pidExists = $false
+$global:launcherTestState.listeners = @(23456)
+$global:launcherTestState.command = '"C:\another-project\bridge\server.mjs"'
+Expect-Failure 'restart-bridge.ps1' '*identity changed*'
+Assert ($global:launcherTestState.stops.Count -eq 0) 'Port ownership alone must never authorize stopping an unrelated script'
+
+Reset-Fixture @($oldHealth)
+$global:launcherTestState.listeners = @(23456)
+$global:launcherTestState.command = (Join-Path $projectDir 'bridge\server.mjs') + '.another-file'
+Expect-Failure 'restart-bridge.ps1' '*identity changed*'
+Assert ($global:launcherTestState.stops.Count -eq 0) 'A script-path prefix match must be rejected'
+
+Reset-Fixture @($oldHealth)
+$global:launcherTestState.listeners = @(23456, 23457)
+Expect-Failure 'restart-bridge.ps1' '*Multiple bridge listeners*'
+Assert ($global:launcherTestState.stops.Count -eq 0) 'Ambiguous listeners must be rejected'
+Write-Output 'PASS: 12 Windows launcher scenarios (mocked process, network, browser, and app-data writes).'
