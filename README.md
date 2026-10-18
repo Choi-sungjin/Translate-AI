@@ -91,7 +91,3 @@ npm run package
 - `npm run package`: `dist/Translate-AI-1.1.2.zip`(확장만), `dist/Translate-AI-1.1.2-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
 
 검증 범위와 실제 번역 예문: [ChatGPT 로그인 검증 보고서](docs/CHATGPT-LOGIN.md), [v1.0 검증 보고서](docs/VERIFICATION.md). 설정 화면: [스크린샷](docs/screenshots/chatgpt-settings.png).
-
-## REA와의 관계
-
-REA는 원본 배포물의 동작 구조를 이해하는 분석 도구로 사용했습니다. 이 확장은 독립적으로 작성했으며 Immersive Translate의 코드·브랜드 자산을 포함하지 않습니다. 실행 시 REA 설치가 필요하지 않습니다. REA의 Codex 연결과 이번 분석 범위는 [REA 메모](docs/REA.md)에 기록했습니다.
