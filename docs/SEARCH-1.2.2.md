@@ -27,4 +27,10 @@
 
 별도 Chrome for Testing에서 실제 ChatGPT 계정으로 NVIDIA 검색창을 시험했습니다. `아이작심에서 로스 연결 방법을 알려주세요.` → `Please tell me how to connect ROS to Isaac Sim.` 번역과 한국어 복구, 복구 후 검색창 열림 유지가 통과했습니다. 번역부터 복구까지 7.490초였습니다. 초기 실행에서 쿠키 동의창이 검색 버튼을 가렸으며, 선택적 쿠키 거절을 검사 준비 단계에 추가했습니다. 이어서 실제 사이트의 바깥 클릭 닫기 동작을 발견해 수정한 후 재실행에 성공했습니다. 최종 결과는 로컬 `artifacts/login-modal-1.2.2.json`에 있습니다.
 
-설치된 Chrome·Comet의 최종 검증 결과는 적용 후 추가합니다. v1.2.1의 실제 Chrome 기록은 [CHROME-1.2.1.md](CHROME-1.2.1.md), 이전 Comet 기록은 [COMET.md](COMET.md)에 있습니다.
+## 사용자 브라우저 적용 상태
+
+사용자 Chrome의 NVIDIA 검색창에서 `검색창에서 번역한 문장을 원문으로 복구합니다.`를 입력하고 실제 스페이스 키를 세 번 눌러 `Restores the translated sentence in the search box to its original text.`로 바뀌는 것을 확인했습니다. 완료 상태를 관찰한 뒤 43.867초가 지나도 **원문 복구** 버튼이 남아 있었고, 클릭하자 한국어 원문이 정확히 돌아왔습니다. 로컬 화면 증거는 `artifacts/chrome-search-translated-latest-1.2.2.png`에 보관합니다.
+
+다만 이 사용자 Chrome에는 최종 클릭 전달 수정 전의 코드가 실행 중이어서 복구 시 검색창이 닫혔습니다. 웹페이지 새로고침만으로는 확장 코드가 다시 로드되지 않았습니다. 마지막 코드 수정 후 Chrome·Comet 양쪽 확장 관리에서 확장을 한 번 더 새로고침하도록 요청한 상태입니다. 최종 수정본으로 검색창을 열린 채 복구하는 동작은 위 별도 Chrome for Testing 검사에서 통과했으며, 사용자 브라우저 적용 후 검증과 구분합니다.
+
+Comet은 현재 확장 관리 화면에 있어 최종 코드의 페이지 병기·스페이스 3회·복구·버튼 유지 검증을 아직 완료하지 못했습니다. 관리 화면은 브라우저 도구 접근 정책상 조작하지 않으며, 사용자가 NVIDIA 문서 탭으로 돌아온 뒤 직접 검증을 이어갑니다. v1.2.1의 실제 Chrome 기록은 [CHROME-1.2.1.md](CHROME-1.2.1.md), 이전 Comet 기록은 [COMET.md](COMET.md)에 있습니다.
