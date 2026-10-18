@@ -27,10 +27,32 @@
 
 별도 Chrome for Testing에서 실제 ChatGPT 계정으로 NVIDIA 검색창을 시험했습니다. `아이작심에서 로스 연결 방법을 알려주세요.` → `Please tell me how to connect ROS to Isaac Sim.` 번역과 한국어 복구, 복구 후 검색창 열림 유지가 통과했습니다. 번역부터 복구까지 7.490초였습니다. 초기 실행에서 쿠키 동의창이 검색 버튼을 가렸으며, 선택적 쿠키 거절을 검사 준비 단계에 추가했습니다. 이어서 실제 사이트의 바깥 클릭 닫기 동작을 발견해 수정한 후 재실행에 성공했습니다. 최종 결과는 로컬 `artifacts/login-modal-1.2.2.json`에 있습니다.
 
-## 사용자 브라우저 적용 상태
+## 사용자 Chrome·Comet 최종 검증 — 2026-10-18
 
-사용자 Chrome의 NVIDIA 검색창에서 `검색창에서 번역한 문장을 원문으로 복구합니다.`를 입력하고 실제 스페이스 키를 세 번 눌러 `Restores the translated sentence in the search box to its original text.`로 바뀌는 것을 확인했습니다. 완료 상태를 관찰한 뒤 43.867초가 지나도 **원문 복구** 버튼이 남아 있었고, 클릭하자 한국어 원문이 정확히 돌아왔습니다. 로컬 화면 증거는 `artifacts/chrome-search-translated-latest-1.2.2.png`에 보관합니다.
+사용자가 Chrome·Comet 확장을 최종 새로고침한 뒤 실제 NVIDIA 문서에서 직접 확인했습니다. Comet 팝업의 `v1.2.2` 표시를 확인하고 웹페이지도 새로고침했습니다. 기존 ChatGPT 연결 설정을 그대로 사용했으며 검색 폼은 제출하지 않았습니다.
 
-다만 이 사용자 Chrome에는 최종 클릭 전달 수정 전의 코드가 실행 중이어서 복구 시 검색창이 닫혔습니다. 웹페이지 새로고침만으로는 확장 코드가 다시 로드되지 않았습니다. 마지막 코드 수정 후 Chrome·Comet 양쪽 확장 관리에서 확장을 한 번 더 새로고침하도록 요청한 상태입니다. 최종 수정본으로 검색창을 열린 채 복구하는 동작은 위 별도 Chrome for Testing 검사에서 통과했으며, 사용자 브라우저 적용 후 검증과 구분합니다.
+| 항목 | 사용자 Comet | 사용자 Chrome |
+| --- | --- | --- |
+| 페이지 병기 | NVIDIA 문서 22/22 완료, 영어 문단 아래 한국어 표시 | 이전 v1.2.1에서 22/22 확인. 이번 실행은 검색창 수정에 집중 |
+| 페이지 원문 보기 | 상단 버튼 클릭 후 한국어 번역 제거, 영어 원문·링크 표시, 완료 안내 확인 | 이전 검증 기록 참고 |
+| 검색창 스페이스 3회 | 실제 `space` 키 세 번으로 영어 번역 확인 | 검색 입력창에 연속 스페이스 키 세 번으로 영어 번역 확인 |
+| 복구 버튼 유지 | 완료 관찰 후 최소 33.688초 | 완료 관찰 후 최소 40.560초 |
+| 입력 원문 복구 | 한국어 원문 일치, 검색창 열림 유지 | 한국어 원문 일치, DOM의 모달 열림 상태 확인 |
 
-Comet은 현재 확장 관리 화면에 있어 최종 코드의 페이지 병기·스페이스 3회·복구·버튼 유지 검증을 아직 완료하지 못했습니다. 관리 화면은 브라우저 도구 접근 정책상 조작하지 않으며, 사용자가 NVIDIA 문서 탭으로 돌아온 뒤 직접 검증을 이어갑니다. v1.2.1의 실제 Chrome 기록은 [CHROME-1.2.1.md](CHROME-1.2.1.md), 이전 Comet 기록은 [COMET.md](COMET.md)에 있습니다.
+Comet 예문은 `코멧 검색창에서 원문 복구 기능을 확인합니다.` → `Check the original text restoration feature in the Comet search bar.`였습니다. 세 번의 네이티브 키 입력 호출에는 총 294ms가 걸렸습니다. 원문 복구 클릭 후 한국어가 정확히 돌아왔으며 검색창은 열린 상태였습니다.
+
+Chrome 예문은 `검색창을 열린 채로 유지하고 원문을 복구합니다.` → `Keep the search bar open and restore the original text.`였습니다. 복구 후 동일한 한국어와 `modalOpen: true`를 확인했습니다.
+
+버튼 유지 시간은 번역 완료 상태를 처음 관찰한 순간부터 잰 최솟값입니다. 번역 완료 지연이나 영구 유지의 시간 측정값은 아닙니다. 코드에는 복구 알림의 자동 만료 타이머가 없으며, 사용자가 복구·닫기·새 번역을 실행하면 알림이 바뀝니다.
+
+최종 수정 적용 전 Chrome 검사에서도 번역과 43.867초 후 원문 복구는 성공했지만 검색창이 닫혔습니다. 확장 재적용 후 위 최종 검사를 통과했으므로 이 적용 대기 상태는 해소됐습니다.
+
+화면에는 개인 탭·북마크가 포함될 수 있어 스크린샷은 공개 저장소에 올리지 않고 로컬 `artifacts/`에 보관합니다.
+
+- `comet-version-final-1.2.2.png`
+- `comet-nvidia-bilingual-final-1.2.2.png`, `comet-nvidia-restored-final-1.2.2.png`
+- `comet-search-translated-final-1.2.2.png`, `comet-search-held-final-1.2.2.png`, `comet-search-restored-final-1.2.2.png`
+- `chrome-search-translated-final-1.2.2.png`, `chrome-search-restored-final-1.2.2.png`
+- `comet-installed-final-1.2.2.json`, `chrome-installed-final-1.2.2.json`
+
+v1.2.1의 실제 Chrome 페이지·Perplexity 검증 기록은 [CHROME-1.2.1.md](CHROME-1.2.1.md), Comet의 버전별 검증은 [COMET.md](COMET.md)에 있습니다.
