@@ -19,3 +19,8 @@ jobs:
         with:
           name: test-results
           path: test-results/
+  windows-launcher:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: powershell.exe -NoProfile -File tests/windows-launcher.test.ps1

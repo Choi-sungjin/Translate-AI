@@ -18,7 +18,7 @@ function archive(name, files, cwd) {
 archive(name, await readdir('extension'), 'extension');
 const desktop = `Translate-AI-${manifest.version}-desktop.zip`;
 // Explicit source allowlist: never include credentials, node_modules, profiles or local artifacts.
-archive(desktop, ['extension', 'bridge', 'scripts', 'tests', 'docs', 'README.md', 'package.json', 'package-lock.json', 'playwright.config.js', 'Start-Translate-AI.cmd', 'Stop-Translate-AI.cmd'], '.');
+archive(desktop, ['extension', 'bridge', 'scripts', 'tests', 'docs', 'README.md', 'package.json', 'package-lock.json', 'playwright.config.js', 'Start-Translate-AI.cmd', 'Stop-Translate-AI.cmd', 'Restart-Translate-AI.cmd'], '.');
 const hashes = [];
 for (const file of [name, desktop]) {
   const zip = await readFile(path.join('dist', file));
