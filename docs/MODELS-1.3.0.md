@@ -45,4 +45,4 @@ OpenAI는 [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna)
 
 - JavaScript 구문 검사, 단위 검사 20개, 확장을 실제 로드한 모의 API 회귀 검사 25개 통과.
 - 격리된 Chrome for Testing에서 실제 ChatGPT 로그인으로 두 Luna 모델을 각각 선택·저장·재로드하고 페이지 병기, 스페이스 3회 번역, 입력/페이지 원문 복구를 확인했습니다.
-- 사용자의 설치된 Chrome/Comet 검증 결과는 적용 후 별도 기록합니다. 격리된 시험 브라우저 결과를 사용자 브라우저 검증으로 간주하지 않습니다.
+- 설치된 Chrome에서는 GPT-6 Luna 입력 번역, 49초 후 복구 버튼 유지, 입력 원문 복구와 검색창 열림 유지를 직접 확인했습니다. Comet의 스페이스 3회 번역은 사용자가 정상 작동을 확인했습니다. 설치 브라우저의 새 모델 페이지 병기·복원 및 Comet 입력 복구 재검증은 남아 있습니다. [확인 방법별 상세 결과](VERIFICATION-1.3.0.md).
