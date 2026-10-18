@@ -14,9 +14,13 @@
 
   // A shadow root keeps the status UI separate from the page's styles and text extraction.
   let toastHost, toastRoot, toastTimer, inputNoticeUntil = 0;
-  function notify(text, action, persistent = false) {
+  function dismissNotice() {
+    clearTimeout(toastTimer); inputNoticeUntil = 0; toastHost?.remove();
+    if (pageEnabled) updatePageStatus();
+  }
+  function notify(text, action, persistent = false, sticky = Boolean(action)) {
     if (persistent && performance.now() < inputNoticeUntil) return;
-    if (!persistent) inputNoticeUntil = performance.now() + 10000;
+    if (!persistent) inputNoticeUntil = sticky ? Infinity : performance.now() + 30000;
     clearTimeout(toastTimer);
     if (!toastHost?.isConnected) {
       toastHost = document.createElement('div');
@@ -36,7 +40,12 @@
       button.addEventListener('mousedown', e => e.preventDefault());
       button.addEventListener('click', action.run); box.append(button);
     }
-    if (!persistent) toastTimer = setTimeout(() => { inputNoticeUntil = 0; toastHost?.remove(); if (pageEnabled) updatePageStatus(); }, 10000);
+    if (!persistent) {
+      const close = document.createElement('button'); close.textContent = '닫기'; close.setAttribute('aria-label', '번역 알림 닫기');
+      close.addEventListener('mousedown', e => e.preventDefault());
+      close.addEventListener('click', dismissNotice); box.append(close);
+      if (!sticky) toastTimer = setTimeout(dismissNotice, 30000);
+    }
   }
 
   // Page translation retains the original nodes and their event handlers.
@@ -252,7 +261,7 @@
     if (original.length > 12000) { notify('입력창 번역은 한 번에 12,000자까지 가능합니다.'); return; }
     const revision = revisions.get(el) || 0;
     const job = {}; jobs.set(el, job);
-    notify('입력한 내용을 번역하고 있습니다…');
+    notify('입력한 내용을 번역하고 있습니다…', null, false, true);
     try {
       const result = await rpc({ type: 'TAI_TRANSLATE', mode: 'input', text: original });
       if (jobs.get(el) !== job) return;

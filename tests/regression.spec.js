@@ -177,7 +177,30 @@ test('page progress cannot hide input restoration while another translation comp
   const input = await typeInput(page, '#text', '원문 복구 유지'); await triple(page);
   await expect(input).toHaveValue('Translated: 원문 복구 유지');
   await expect(page.locator('#article .tai-translation')).toHaveText('Translated: slow concurrent page');
+  // Real elapsed time also covers the content script's isolated-world timers.
+  await page.waitForTimeout(12500);
+  await page.locator('#article').evaluate(el => { el.firstChild.nodeValue = 'Later page progress'; });
+  await expect(page.locator('#article .tai-translation')).toHaveText('Translated: Later page progress');
   await page.getByRole('button', { name: '원문 복구', exact: true }).click(); await expect(input).toHaveValue('원문 복구 유지');
+});
+
+test('closing a persistent input notice restores page status and never edits the translated input', async ({ context, extensionId, page }) => {
+  await toggle(context, extensionId, page);
+  const input = await typeInput(page, '#text', '알림 닫기'); await triple(page);
+  await expect(input).toHaveValue('Translated: 알림 닫기');
+  await page.getByRole('button', { name: '번역 알림 닫기', exact: true }).click();
+  await expect(page.getByRole('button', { name: '원문 복구', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '원문 보기', exact: true })).toBeVisible();
+  await expect(input).toHaveValue('Translated: 알림 닫기');
+});
+
+test('persistent restore never overwrites edits made after translation', async ({ page }) => {
+  const input = await typeInput(page, '#text', '수정 전'); await triple(page);
+  await expect(input).toHaveValue('Translated: 수정 전');
+  await input.fill('새로 입력한 문장');
+  await page.getByRole('button', { name: '원문 복구', exact: true }).click();
+  await expect(input).toHaveValue('새로 입력한 문장');
+  await expect(page.locator('#translate-ai-status')).toContainText('원문 복구를 취소했습니다');
 });
 
 test('ChatGPT login bridge settings and both translation paths work without an API key', async ({ context, extensionId, page }) => {

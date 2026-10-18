@@ -27,5 +27,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(18457, '127.0.0.1');
 if (process.env.TRANSLATE_AI_LIVE_LOGIN !== '1') {
   const bridge = createBridge({ token: 'b'.repeat(64), cwd: '.', status: async () => ({ loggedIn: true, method: 'ChatGPT', message: 'ChatGPT 계정 로그인 연결됨 (테스트)' }), translate: async ({ text }) => `Login translated: ${text}`, translateBatch: async ({ texts }) => texts.map(text => `Login translated: ${text}`) });
-  bridge.listen(18458, '127.0.0.1');
+  bridge.listen(Number(process.env.TRANSLATE_AI_TEST_BRIDGE_PORT || 18459), '127.0.0.1');
 }

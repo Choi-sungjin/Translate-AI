@@ -1,4 +1,6 @@
 import { defineConfig } from '@playwright/test';
+// Keep mock translation traffic off the user's running login bridge.
+if (process.env.TRANSLATE_AI_LIVE_LOGIN !== '1') process.env.TRANSLATE_AI_TEST_BRIDGE_PORT ||= '18459';
 export default defineConfig({
   testDir: './tests', timeout: 60000, expect: { timeout: 12000 }, fullyParallel: false, workers: 1,
   reporter: [['list'], ['json', { outputFile: 'test-results/results.json' }]],
