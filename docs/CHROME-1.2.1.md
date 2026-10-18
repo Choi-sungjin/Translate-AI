@@ -21,7 +21,15 @@
 
 실제 Perplexity의 기존 테스트 대화에서도 최신 확장 코드를 적용해 검사했습니다. `퍼플렉시티에서 번역한 문장을 원문으로 복구합니다.`를 입력하고 스페이스 키를 세 번 눌러 `Restores sentences translated in Perplexity to their original text.`로 변경되는 것을 확인했습니다. **원문 복구**로 한국어 전체가 돌아왔고 **닫기** 버튼으로 안내를 닫았습니다. 질문은 전송하지 않았으며 테스트 후 입력창을 원래의 빈 상태로 돌렸습니다. 증거는 로컬 `artifacts/chrome-perplexity-translated-1.2.1.png`, `artifacts/chrome-perplexity-restored-1.2.1.png`입니다.
 
-사용자 Chrome의 NVIDIA 페이지에서 이번 버전의 페이지 번역 시작은 아직 미확인입니다. 툴바 시작 버튼을 직접 누르는 단계는 도구 제약으로 사용자에게 요청했습니다. 아래 NVIDIA 통과 결과는 별도 Chrome for Testing 결과입니다.
+사용자가 Chrome의 [NVIDIA ROS 2 문서](https://docs.isaacsim.omniverse.nvidia.com/latest/ros2_tutorials/index.html)에서 툴바의 번역 시작 버튼을 누른 뒤, 동일한 실제 Chrome 탭에서 아래 내용을 직접 검사했습니다. 별도 테스트 브라우저의 결과와 구분합니다.
+
+- 상태 표시 **22 / 22** 완료. 번역 항목 22개, 처리 중 0개, 오류 0개. 20개 항목에는 한국어가 표시되었고 `ROS 2`, `NVIDIA Isaac ROS` 명칭은 그대로 유지됐습니다.
+- 영어 원문 아래 한국어 병기와 ROS 원본 링크를 확인했습니다.
+- **원문 보기** 버튼을 직접 클릭해 **원문으로 돌아왔습니다.** 안내를 확인했습니다.
+- 복원 후 번역 요소는 **0개**였습니다. 병기 중 번역 요소를 제외한 본문 텍스트와 복원 후 본문 텍스트가 완전히 일치했습니다. 본문 영역의 **링크 24개**도 주소와 순서가 완전히 일치했습니다.
+- 이번 실행은 사용자가 번역을 시작했으므로 정확한 완료 지연 시간은 측정하지 않았습니다.
+
+증거는 로컬 `artifacts/chrome-nvidia-bilingual-1.2.1.png`, `artifacts/chrome-nvidia-restored-1.2.1.png`, `artifacts/chrome-nvidia-1.2.1.json`입니다. 검증 후 해당 탭은 원문 상태로 남겨두었습니다.
 
 ## 별도 테스트 브라우저
 
