@@ -3,6 +3,32 @@ test.beforeEach(async ({ context, extensionId, page }) => {
   await setupMock(context, extensionId); await page.goto(BASE); await page.bringToFront();
 });
 
+test('model selection persists in settings and popup; cache and page requests use the selected model', async ({ context, extensionId, page, request }) => {
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#provider').selectOption('codex'); await options.locator('#bridgeToken').fill('b'.repeat(64));
+  await options.locator('#codexModel').selectOption('gpt-6-luna');
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('저장했습니다');
+  await options.reload(); await expect(options.locator('#codexModel')).toHaveValue('gpt-6-luna');
+  await options.close(); await page.bringToFront();
+  const original = '모델별 캐시 확인';
+  const input = await typeInput(page, '#text', original); await triple(page);
+  await expect(input).toHaveValue(`Login translated: ${original}`);
+  await expect(page.locator('#translate-ai-status')).toContainText('GPT-6 Luna');
+  await toggle(context, extensionId, page);
+  await expect(page.locator('#article .tai-translation')).toHaveAttribute('title', '번역 모델: gpt-6-luna');
+  await toggle(context, extensionId, page);
+  const popup = await context.newPage(); await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popup.locator('#codexModel')).toHaveValue('gpt-6-luna');
+  await popup.locator('#codexModel').selectOption('gpt-6.1-sol'); await expect(popup.locator('#status')).toContainText('저장 완료');
+  await popup.reload(); await expect(popup.locator('#codexModel')).toHaveValue('gpt-6.1-sol'); await popup.close();
+  await page.bringToFront(); await input.fill(original); await input.focus(); await triple(page);
+  await expect(input).toHaveValue(`Login translated: ${original}`);
+  await expect(page.locator('#translate-ai-status')).toContainText('GPT-6.1 Sol');
+  await page.getByRole('button', { name: '원문 복구', exact: true }).click(); await expect(input).toHaveValue(original);
+  const calls = (await (await request.get(`${BASE}/requests`)).json()).filter(r => r.provider === 'codex' && r.text === original);
+  expect(calls.map(r => r.model)).toEqual(['gpt-6-luna', 'gpt-6.1-sol']);
+});
+
 test('bilingual paragraphs preserve original DOM, links and controls; toggle is reversible', async ({ context, extensionId, page }) => {
   const original = await page.locator('#article').textContent();
   await toggle(context, extensionId, page);

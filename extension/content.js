@@ -105,6 +105,7 @@
       rpc({ type: 'TAI_TRANSLATE', mode: 'page', text: entry.source }).then(result => {
         if (!pageEnabled || epoch !== pageEpoch || entries.get(entry.node) !== entry || !entry.node.isConnected || sourceText(entry.node) !== entry.source) return;
         marker.textContent = result.text; marker.lang = result.target; marker.className = 'tai-translation'; entry.state = 'done';
+        if (result.model) marker.title = `번역 모델: ${result.model}`;
       }).catch(error => {
         if (!pageEnabled || epoch !== pageEpoch || entries.get(entry.node) !== entry) return;
         marker.className = 'tai-translation tai-error'; marker.textContent = error.message; entry.state = 'error';
@@ -283,7 +284,8 @@
         notify('입력이 바뀌어 번역을 적용하지 않았습니다.'); return;
       }
       await a.set(result.text); const appliedRevision = revisions.get(el) || 0;
-      notify('입력창을 번역했습니다.', { label: '원문 복구', run: async () => {
+      const modelLabel = result.provider === 'codex' && result.model ? ` · ${result.model.replace(/^gpt-/, 'GPT-').replace(/-(sol|luna)$/, (_, name) => ` ${name[0].toUpperCase()}${name.slice(1)}`)}` : '';
+      notify(`입력창을 번역했습니다.${modelLabel}`, { label: '원문 복구', run: async () => {
         if (!el.isConnected || a.read() !== result.text || (revisions.get(el) || 0) !== appliedRevision) { notify('입력이 바뀌어 원문 복구를 취소했습니다.'); return; }
         try { el.focus(); await a.set(original, Math.max(0, caret)); notify('입력 원문을 복구했습니다.'); }
         catch (error) { notify(error.message); }

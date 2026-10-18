@@ -1,6 +1,8 @@
 import { LANGUAGES } from './settings.js';
+import { CODEX_MODELS } from './models.js';
 const form = document.querySelector('#settings'), status = document.querySelector('#status');
-const keys = ['provider', 'pageLanguage', 'inputLanguage', 'inputEnabled', 'spaceInterval', 'apiUrl', 'model', 'apiKey', 'bridgeToken'];
+const keys = ['provider', 'pageLanguage', 'inputLanguage', 'inputEnabled', 'spaceInterval', 'apiUrl', 'model', 'codexModel', 'apiKey', 'bridgeToken'];
+for (const [value, label] of Object.entries(CODEX_MODELS)) document.querySelector('#codexModel').add(new Option(label, value));
 for (const id of ['pageLanguage', 'inputLanguage']) {
   for (const [value, name] of Object.entries(LANGUAGES)) document.getElementById(id).add(new Option(name, value));
 }
@@ -42,7 +44,7 @@ document.querySelector('#test').addEventListener('click', async event => {
     const settings = await send({ type: 'TAI_SETTINGS' });
     const text = settings.inputLanguage === 'en' ? '안녕하세요. 만나서 반갑습니다.' : 'Hello. It is nice to meet you.';
     const result = await send({ type: 'TAI_TRANSLATE', mode: 'test', text });
-    message(`연결 성공 · ${result.text}`);
+    message(`연결 성공${result.provider === 'codex' ? ` · ${CODEX_MODELS[result.model] || result.model}` : ''} · ${result.text}`);
   } catch (error) { message(error.message, true); }
   finally { button.disabled = false; }
 });

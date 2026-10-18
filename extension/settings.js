@@ -1,6 +1,7 @@
+import { DEFAULT_CODEX_MODEL, validateCodexModel } from './models.js';
 export const DEFAULTS = Object.freeze({
   provider: 'codex', pageLanguage: 'ko', inputLanguage: 'en',
-  inputEnabled: true, spaceInterval: 300,
+  inputEnabled: true, spaceInterval: 300, codexModel: DEFAULT_CODEX_MODEL,
   apiUrl: 'https://api.openai.com/v1/chat/completions', model: '', apiKey: '', bridgeToken: ''
 });
 export const LANGUAGES = { ko: '한국어', en: '영어', ja: '일본어', zh: '중국어', de: '독일어', fr: '프랑스어', es: '스페인어', vi: '베트남어' };
@@ -8,6 +9,7 @@ export function validateSettings(value) {
   const s = { ...DEFAULTS };
   for (const key of Object.keys(s)) if (Object.hasOwn(value, key)) s[key] = value[key];
   if (!['codex', 'mymemory', 'openai'].includes(s.provider)) throw new Error('지원하지 않는 번역 서비스입니다.');
+  s.codexModel = validateCodexModel(s.codexModel);
   if (!LANGUAGES[s.pageLanguage] || !LANGUAGES[s.inputLanguage]) throw new Error('번역 언어를 선택하세요.');
   if (typeof s.inputEnabled !== 'boolean') throw new Error('입력 번역 설정이 올바르지 않습니다.');
   s.spaceInterval = Number(s.spaceInterval);
@@ -31,5 +33,5 @@ export async function getSettings() {
   return validateSettings(settings || {});
 }
 export function publicSettings(s) {
-  return { pageLanguage: s.pageLanguage, inputLanguage: s.inputLanguage, inputEnabled: s.inputEnabled, spaceInterval: s.spaceInterval, provider: s.provider };
+  return { pageLanguage: s.pageLanguage, inputLanguage: s.inputLanguage, inputEnabled: s.inputEnabled, spaceInterval: s.spaceInterval, provider: s.provider, codexModel: s.codexModel };
 }

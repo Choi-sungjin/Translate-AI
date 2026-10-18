@@ -6,6 +6,7 @@ import { createBridge } from '../bridge/server.mjs';
 import { parseTranslation, parseBatchTranslation, translationArgs } from '../bridge/codex.mjs';
 import { createTranslationQueue } from '../bridge/queue.mjs';
 import { createPageBatcher } from '../extension/page-batches.js';
+import { validateSettings } from '../extension/settings.js';
 
 const token = 'a'.repeat(64);
 async function fixture(t) {
@@ -43,7 +44,7 @@ test('authenticated extension can check login and translate only validated text'
   assert.equal((await status.json()).loggedIn, true);
   const response = await fetch(`${url}/v1/translate`, { method: 'POST', headers, body: JSON.stringify({ text: 'Hello', target: 'ko', mode: 'input', command: 'ignored' }) });
   assert.equal((await response.json()).text, '번역 결과');
-  assert.deepEqual(requests, [{ text: 'Hello', target: 'ko' }]);
+  assert.deepEqual(requests, [{ text: 'Hello', target: 'ko', model: 'gpt-6.1-sol' }]);
 });
 test('bridge refuses malformed, oversized and unsupported requests', async t => {
   const { url, headers, requests } = await fixture(t);
@@ -65,6 +66,48 @@ test('translation launches with explicit isolation and no arbitrary shell comman
   for (const flag of ['--ignore-user-config', '--ephemeral', '--sandbox', 'read-only', 'shell_tool', 'apps', 'hooks', 'multi_agent', 'web_search="disabled"', 'project_doc_max_bytes=0']) assert.ok(args.includes(flag));
   assert.equal(args.at(-1), '-');
   assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'));
+});
+
+test('legacy settings retain Sol; selected model reaches CLI as an allowlisted argument', () => {
+  assert.equal(validateSettings({}).codexModel, 'gpt-6.1-sol');
+  for (const model of ['gpt-6.1-sol', 'gpt-6-luna', 'gpt-5.6-luna']) {
+    assert.equal(validateSettings({ codexModel: model }).codexModel, model);
+    const args = translationArgs(true, model);
+    assert.equal(args[args.indexOf('--model') + 1], model);
+    assert.ok(args.includes('model_reasoning_effort="low"'));
+  }
+  for (const model of [null, {}, '--config=unsafe', 'gpt-unknown']) {
+    assert.throws(() => translationArgs(false, model));
+    assert.throws(() => validateSettings({ codexModel: model }));
+  }
+});
+
+test('bridge advertises selection support and reports the model used by both routes', async t => {
+  const { url, headers, requests } = await fixture(t);
+  assert.equal((await fetch(`${url}/v1/capabilities`)).status, 401);
+  assert.ok((await (await fetch(`${url}/v1/capabilities`, { headers })).json()).models.includes('gpt-6-luna'));
+  for (const batch of [false, true]) {
+    const response = await fetch(`${url}/v1/${batch ? 'translate-batch' : 'translate'}`, {
+      method: 'POST', headers, body: JSON.stringify({ ...(batch ? { texts: ['first', 'second'] } : { text: 'first' }), target: 'ko', mode: batch ? 'page' : 'input', model: 'gpt-6-luna' })
+    });
+    const result = await response.json(); assert.equal(result.model, 'gpt-6-luna'); assert.equal(result.reasoningEffort, 'low');
+  }
+  assert.ok(requests.every(r => r.model === 'gpt-6-luna'));
+  const response = await fetch(`${url}/v1/translate`, { method: 'POST', headers, body: JSON.stringify({ text: 'valid', target: 'ko', mode: 'input', model: 'gpt-unknown' }) });
+  assert.equal(response.status, 400); assert.equal(requests.length, 2);
+});
+
+test('bridge and browser batches never combine requests for different models', async () => {
+  const bridgeCalls = [];
+  const convert = async data => { bridgeCalls.push(data); return data.texts ? data.texts.map(text => `${data.model}: ${text}`) : `${data.model}: ${data.text}`; };
+  const queue = createTranslationQueue({ cwd: '.', translate: convert, translateBatch: convert });
+  const models = ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-luna', 'gpt-6.1-sol'];
+  assert.deepEqual(await Promise.all(models.map((model, i) => queue.schedule({ text: String(i), target: 'ko', model }, 'page'))), models.map((model, i) => `${model}: ${i}`));
+  assert.equal(bridgeCalls.length, 2); assert.ok(bridgeCalls.every(c => c.texts.length === 2));
+  const browserCalls = [];
+  const batch = createPageBatcher(async (settings, data) => { browserCalls.push(data); assert.equal(settings.codexModel, data.model); return { texts: data.texts.map(text => `${data.model}: ${text}`) }; }, 1);
+  assert.deepEqual(await Promise.all(models.map((codexModel, i) => batch(String(i), 'ko', { bridgeToken: token, codexModel }))), models.map((model, i) => `${model}: ${i}`));
+  assert.equal(browserCalls.length, 2);
 });
 
 test('batch parser maps by id and refuses missing, duplicate or unknown paragraphs', () => {

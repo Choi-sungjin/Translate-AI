@@ -9,7 +9,7 @@ export function createPageBatcher(send, delay = 30) {
         const job = group.jobs.shift(); batch.push(job); chars += job.text.length;
       }
       try {
-        const result = await send(group.settings, { texts: batch.map(j => j.text), target: group.target, mode: 'page' });
+        const result = await send(group.settings, { texts: batch.map(j => j.text), target: group.target, mode: 'page', model: group.settings.codexModel });
         if (!Array.isArray(result.texts) || result.texts.length !== batch.length || result.texts.some(t => typeof t !== 'string' || !t.trim() || t.length > 60000)) throw new Error('묶음 번역 결과가 올바르지 않습니다.');
         batch.forEach((job, i) => job.resolve(result.texts[i]));
       } catch (error) { batch.forEach(job => job.reject(error)); }
@@ -18,7 +18,7 @@ export function createPageBatcher(send, delay = 30) {
   }
   return (text, target, settings) => new Promise((resolve, reject) => {
     if (typeof text !== 'string' || !text.trim() || text.length > 12000 || pendingCount >= 96) { reject(new Error('페이지 번역 요청이 너무 많거나 너무 깁니다.')); return; }
-    const key = JSON.stringify([settings.bridgeToken, target]);
+    const key = JSON.stringify([settings.bridgeToken, settings.codexModel, target]);
     let group = groups.get(key);
     if (!group) {
       group = { jobs: [], settings, target }; groups.set(key, group);

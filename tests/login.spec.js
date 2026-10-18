@@ -3,6 +3,34 @@ import path from 'node:path';
 import { stateDirectory } from '../bridge/server.mjs';
 import { test, expect, BASE, toggle, triple, typeInput } from './fixtures.js';
 
+test('LIVE LOGIN: selecting each Luna model applies to page and input translation', async ({ context, extensionId, page }, testInfo) => {
+  test.skip(process.env.TRANSLATE_AI_LIVE_LOGIN !== '1', 'Local login test only.');
+  test.setTimeout(240000);
+  const { token } = JSON.parse(await readFile(path.join(stateDirectory(), 'bridge-state.json'), 'utf8'));
+  const evidence = [];
+  for (const model of ['gpt-6-luna', 'gpt-5.6-luna']) {
+    const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+    await options.locator('#bridgeToken').fill(token); await options.locator('#codexModel').selectOption(model);
+    await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('저장했습니다');
+    await options.reload(); await expect(options.locator('#codexModel')).toHaveValue(model); await options.close();
+    await page.goto(BASE); await page.bringToFront();
+    await toggle(context, extensionId, page);
+    const paragraph = page.locator('#article .tai-translation');
+    await expect(paragraph).toHaveAttribute('title', `번역 모델: ${model}`, { timeout: 120000 });
+    await expect(paragraph).toContainText(/[가-힣]/);
+    const source = '모델을 변경한 뒤에도 검색창의 원문을 복구할 수 있습니다.';
+    const input = await typeInput(page, '#text', source); await triple(page);
+    await expect(input).toHaveValue(/[A-Za-z]/, { timeout: 120000 });
+    const result = { model, page: await paragraph.textContent(), input: await input.inputValue() };
+    await expect(page.locator('#translate-ai-status')).toContainText(model === 'gpt-6-luna' ? 'GPT-6 Luna' : 'GPT-5.6 Luna');
+    await page.screenshot({ path: testInfo.outputPath(`${model}-selected.png`), fullPage: true });
+    await page.getByRole('button', { name: '원문 복구', exact: true }).click(); await expect(input).toHaveValue(source);
+    await toggle(context, extensionId, page); await expect(page.locator('.tai-translation')).toHaveCount(0);
+    evidence.push({ ...result, inputRestored: true, pageRestored: true });
+  }
+  console.log(JSON.stringify({ environment: 'Isolated Chrome for Testing', actualChatGPT: true, evidence }));
+});
+
 test('LIVE LOGIN: NVIDIA modal search keeps translation and restore controls usable', async ({ context, extensionId, page }, testInfo) => {
   test.skip(process.env.TRANSLATE_AI_LIVE_LOGIN !== '1', 'Local login test only.');
   test.setTimeout(180000);

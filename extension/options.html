@@ -14,6 +14,7 @@
       <label>사용할 서비스<select id="provider"><option value="codex">ChatGPT 계정 로그인 · Codex 연결</option><option value="mymemory">MyMemory 무료 번역 · API 키 없이 시작</option><option value="openai">개인 AI API · OpenAI 호환 / 로컬 서버</option></select></label>
       <div id="codex-fields" class="stack" style="margin-top:20px">
         <p class="help">이 PC의 Codex CLI에 로그인한 ChatGPT 계정으로 번역합니다. API 키는 필요하지 않으며, 계정의 Codex 사용량에 포함됩니다.</p>
+        <label>ChatGPT 번역 모델<select id="codexModel"></select><span class="help">페이지와 입력 번역에 함께 적용합니다. 모든 모델은 낮은 추론 강도(low)를 사용합니다. 계정에서 사용할 수 없는 모델은 오류를 표시하며 다른 모델로 자동 변경하지 않습니다.</span></label>
         <p class="help">먼저 내려받은 전체 패키지의 <b>Start-Translate-AI.cmd</b>를 실행하세요. 연결 화면에서 코드를 복사해 아래에 붙여넣고 저장하면 됩니다.</p>
         <label>로컬 연결 코드<input id="bridgeToken" type="password" autocomplete="off" spellcheck="false" placeholder="이 PC의 연결 화면에서 복사"><span class="help">ChatGPT 로그인 토큰이 아닙니다. 다른 사람에게 공유하지 마세요.</span></label>
         <div class="actions"><button type="button" id="open-bridge" class="secondary">로컬 연결 화면 열기</button><button type="button" id="bridge-status" class="quiet">저장한 연결 상태 확인</button></div>

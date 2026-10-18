@@ -6,6 +6,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { loginStatus, translateWithCodex, translateBatchWithCodex } from './codex.mjs';
 import { createTranslationQueue } from './queue.mjs';
+import { CODEX_MODELS, validateCodexModel } from '../extension/models.js';
 
 export const PORT = 18458;
 export const stateDirectory = () => path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), '.local', 'share'), 'Translate-AI');
@@ -39,7 +40,7 @@ export function createBridge({ token, cwd, translate = translateWithCodex, trans
     if (req.headers.host !== authority || (origin && origin !== localOrigin && !/^chrome-extension:\/\/[a-p]{32}$/.test(origin))) { json(403, { error: '허용되지 않은 접근입니다.' }); return; }
     if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
     if (req.method === 'OPTIONS') { res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'GET,POST'); res.writeHead(204); res.end(); return; }
-    if (req.method === 'GET' && req.url === '/health') { json(200, { name: 'translate-ai-bridge', version: '1.2.0', pageBatchTransport: true, ...queue.stats() }); return; }
+    if (req.method === 'GET' && req.url === '/health') { json(200, { name: 'translate-ai-bridge', version: '1.3.0', pageBatchTransport: true, modelSelection: true, ...queue.stats() }); return; }
     if (req.method === 'GET' && ['/', '/dashboard.js'].includes(req.url)) {
       // Pairing code is only available to same-origin local navigation, never CORS.
       if ((origin && origin !== localOrigin) || !['none', 'same-origin', undefined].includes(req.headers['sec-fetch-site'])) { json(403, { error: '로컬 연결 화면을 직접 여세요.' }); return; }
@@ -50,13 +51,15 @@ export function createBridge({ token, cwd, translate = translateWithCodex, trans
     const supplied = Buffer.from(req.headers.authorization?.replace(/^Bearer /, '') || ''); const expected = Buffer.from(token);
     if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) { json(401, { error: '로컬 연결 코드가 다릅니다. 연결 화면의 코드를 다시 저장하세요.' }); return; }
     try {
-      if (req.method === 'GET' && req.url === '/v1/status') { json(200, await status(cwd)); return; }
+      if (req.method === 'GET' && req.url === '/v1/status') { json(200, { ...await status(cwd), modelSelection: true }); return; }
+      if (req.method === 'GET' && req.url === '/v1/capabilities') { json(200, { modelSelection: true, models: Object.keys(CODEX_MODELS) }); return; }
       const batch = req.url === '/v1/translate-batch';
       if (req.method !== 'POST' || (!batch && req.url !== '/v1/translate')) { json(404, { error: '지원하지 않는 요청입니다.' }); return; }
       if (!req.headers['content-type']?.startsWith('application/json')) { json(415, { error: 'JSON 요청이 필요합니다.' }); return; }
       let bytes = 0, chunks = [];
       for await (const chunk of req) { bytes += chunk.length; if (bytes > 100000) { json(413, { error: '요청이 너무 큽니다.' }); return; } chunks.push(chunk); }
       let data; try { data = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { json(400, { error: '잘못된 JSON입니다.' }); return; }
+      let model; try { model = validateCodexModel(data?.model); } catch (error) { json(400, { error: error.message }); return; }
       const texts = batch ? data?.texts : [data?.text];
       if (!data || !Array.isArray(texts) || !texts.length || texts.length > 12 || texts.some(t => typeof t !== 'string' || !t.trim()) || texts.reduce((n, t) => n + t.length, 0) > 12000 || !['ko', 'en', 'ja', 'zh', 'de', 'fr', 'es', 'vi'].includes(data.target) || !(batch ? data.mode === 'page' : ['page', 'input', 'test'].includes(data.mode))) { json(400, { error: '번역 요청을 확인하세요.' }); return; }
       const started = Date.now();
@@ -64,8 +67,8 @@ export function createBridge({ token, cwd, translate = translateWithCodex, trans
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); res.write(' ');
       const heartbeat = setInterval(() => { if (!res.destroyed) res.write(' '); }, 10000);
       try {
-        const translated = await Promise.all(texts.map(text => queue.schedule({ text, target: data.target }, data.mode, () => res.destroyed)));
-        res.end(JSON.stringify({ ...(batch ? { texts: translated } : { text: translated[0] }), provider: 'codex', elapsedMs: Date.now() - started }));
+        const translated = await Promise.all(texts.map(text => queue.schedule({ text, target: data.target, model }, data.mode, () => res.destroyed)));
+        res.end(JSON.stringify({ ...(batch ? { texts: translated } : { text: translated[0] }), provider: 'codex', model, reasoningEffort: 'low', elapsedMs: Date.now() - started }));
       } finally { clearInterval(heartbeat); }
     } catch (error) {
       const body = { error: error.message || '로컬 연결 오류입니다.' };
