@@ -1,9 +1,27 @@
 import { test as base, expect, chromium } from '@playwright/test';
 import path from 'node:path';
+import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 export const BASE = 'http://127.0.0.1:18457';
+let testExtension;
+async function extensionPath() {
+  const port = process.env.TRANSLATE_AI_TEST_BRIDGE_PORT;
+  if (!port) return path.resolve('extension');
+  if (!/^\d+$/.test(port) || Number(port) < 1024 || Number(port) > 65535) throw new Error('Invalid isolated test bridge port');
+  if (!testExtension) {
+    await mkdir('artifacts', { recursive: true });
+    testExtension = await mkdtemp(path.resolve('artifacts/extension-test-'));
+    await cp(path.resolve('extension'), testExtension, { recursive: true });
+    // Only the fixture copy is redirected. The installed extension stays untouched.
+    for (const name of ['background.js', 'options.js']) {
+      const file = path.join(testExtension, name);
+      await writeFile(file, (await readFile(file, 'utf8')).replaceAll('127.0.0.1:18458', `127.0.0.1:${port}`));
+    }
+  }
+  return testExtension;
+}
 export const test = base.extend({
   context: async ({}, use) => {
-    const extension = path.resolve('extension');
+    const extension = await extensionPath();
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium', headless: true, viewport: { width: 1280, height: 900 },
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`]

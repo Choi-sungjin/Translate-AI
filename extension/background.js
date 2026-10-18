@@ -1,5 +1,6 @@
 import { getSettings, publicSettings, validateSettings, LANGUAGES } from './settings.js';
 import { splitForTranslation, preserveEdges } from './text.js';
+import { createPageBatcher } from './page-batches.js';
 
 // Content scripts only receive public settings. Keys stay in trusted extension contexts.
 const storageReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
@@ -63,6 +64,7 @@ async function bridgeRequest(route, s, data) {
       ...(data ? { body: JSON.stringify(data) } : {}), credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(120000)
     });
     const result = await response.json();
+    if (response.status === 404 && route === 'translate-batch') throw new Error('로컬 연결 프로그램을 업데이트하고 다시 실행하세요.');
     if (!response.ok || result.error) throw new Error(result.error || 'ChatGPT 연결에 실패했습니다.');
     return result;
   } catch (error) {
@@ -71,15 +73,17 @@ async function bridgeRequest(route, s, data) {
     throw error;
   } finally { clearInterval(heartbeat); }
 }
+const translatePage = createPageBatcher((s, data) => bridgeRequest('translate-batch', s, data));
 async function translateOne(text, target, s, mode) {
   const key = await digest(JSON.stringify([s.provider, s.apiUrl, s.model, s.apiKey, s.bridgeToken, target, text, 'v1']));
   if (cache.has(key)) return cache.get(key);
   if (pending.has(key)) return pending.get(key);
-  const promise = schedule(async () => {
+  const work = async () => {
     const content = text.trim();
     let translated;
     if (s.provider === 'codex') {
-      translated = (await bridgeRequest('translate', s, { text: content, target, mode })).text;
+      translated = mode === 'page' ? await translatePage(content, target, s)
+        : (await bridgeRequest('translate', s, { text: content, target, mode })).text;
     } else if (s.provider === 'mymemory') {
       if (freeQuotaBlocked) throw new Error('무료 번역의 일일 한도에 도달했습니다. 개인 AI API를 설정하거나 나중에 다시 시도하세요.');
       const source = await detectSource(content);
@@ -113,7 +117,10 @@ async function translateOne(text, target, s, mode) {
     cache.set(key, translated);
     if (cache.size > 500) cache.delete(cache.keys().next().value);
     return translated;
-  });
+  };
+  // The local bridge owns bounded batching and an independent input lane.
+  // Applying the generic three-request limiter here would starve both of them.
+  const promise = s.provider === 'codex' ? work() : schedule(work);
   pending.set(key, promise);
   try { return await promise; } finally { pending.delete(key); }
 }

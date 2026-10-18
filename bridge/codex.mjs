@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const instructions = fileURLToPath(new URL('./translation-instructions.txt', import.meta.url));
+const batchSchema = fileURLToPath(new URL('./batch-schema.json', import.meta.url));
 const languages = { ko: 'Korean', en: 'English', ja: 'Japanese', zh: 'Chinese', de: 'German', fr: 'French', es: 'Spanish', vi: 'Vietnamese' };
 const disabledFeatures = ['shell_tool', 'shell_snapshot', 'apps', 'plugins', 'remote_plugin', 'memories', 'multi_agent', 'browser_use', 'computer_use', 'image_generation', 'view_image', 'skill_search', 'hooks', 'workspace_dependencies', 'code_mode_host', 'goals', 'sleep_tool'];
 
@@ -54,10 +55,12 @@ export async function loginStatus(cwd) {
   const loggedIn = result.code === 0 && /logged in using chatgpt/i.test(result.stdout + result.stderr);
   return { loggedIn, method: loggedIn ? 'ChatGPT' : null, message: loggedIn ? 'ChatGPT 계정 로그인 연결됨' : 'Codex에서 ChatGPT로 로그인하세요. 프로젝트 터미널에서 npx codex login을 실행하세요.' };
 }
-export function translationArgs() {
+export function translationArgs(batch = false) {
   const args = ['exec', '--ignore-user-config', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'read-only', '--json', '--color', 'never'];
   for (const feature of disabledFeatures) args.push('--disable', feature);
-  args.push('--enable', 'skip_host_skill_discovery', '-c', 'suppress_unstable_features_warning=true', '-c', 'project_doc_max_bytes=0', '-c', 'web_search="disabled"', '-c', 'model_reasoning_effort="low"', '-c', `model_instructions_file=${JSON.stringify(instructions)}`, '-');
+  args.push('--enable', 'skip_host_skill_discovery', '-c', 'suppress_unstable_features_warning=true', '-c', 'project_doc_max_bytes=0', '-c', 'web_search="disabled"', '-c', 'model_reasoning_effort="low"', '-c', `model_instructions_file=${JSON.stringify(instructions)}`);
+  if (batch) args.push('--output-schema', batchSchema);
+  args.push('-');
   return args;
 }
 export function parseTranslation(output, code) {
@@ -77,4 +80,26 @@ export async function translateWithCodex({ text, target }, cwd) {
   if (!status.loggedIn) throw new Error(status.message);
   const result = await run(translationArgs(), { cwd, input: JSON.stringify({ targetLanguage: languages[target], sourceText: text }) });
   return parseTranslation(result.stdout, result.code);
+}
+export function parseBatchTranslation(output, code, count) {
+  let data;
+  try { data = JSON.parse(parseTranslation(output, code)); }
+  catch { throw new Error('ChatGPT 묶음 번역 결과를 확인하지 못했습니다. 원문은 유지됩니다.'); }
+  const items = data?.translations, mapped = new Map();
+  if (!Array.isArray(items) || items.length !== count) throw new Error('묶음 번역의 문단 수가 맞지 않습니다.');
+  for (const item of items) {
+    if (!Number.isInteger(item?.id) || item.id < 0 || item.id >= count || mapped.has(item.id) || typeof item.text !== 'string' || !item.text.trim() || item.text.length > 60000) {
+      throw new Error('묶음 번역의 문단 식별자가 올바르지 않습니다.');
+    }
+    mapped.set(item.id, item.text);
+  }
+  return Array.from({ length: count }, (_, id) => mapped.get(id));
+}
+export async function translateBatchWithCodex({ texts, target }, cwd) {
+  if (!Array.isArray(texts) || !texts.length || texts.length > 12 || texts.some(t => typeof t !== 'string' || !t.trim()) || texts.reduce((n, t) => n + t.length, 0) > 12000 || !Object.hasOwn(languages, target)) throw new Error('묶음 번역 요청을 확인하세요.');
+  await mkdir(cwd, { recursive: true });
+  const status = await loginStatus(cwd);
+  if (!status.loggedIn) throw new Error(status.message);
+  const result = await run(translationArgs(true), { cwd, input: JSON.stringify({ targetLanguage: languages[target], sources: texts.map((text, id) => ({ id, text })) }) });
+  return parseBatchTranslation(result.stdout, result.code, texts.length);
 }

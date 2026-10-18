@@ -19,6 +19,8 @@ async function load() {
   const settings = await send({ type: 'TAI_SETTINGS' });
   for (const key of keys) { const el = document.getElementById(key); if (el.type === 'checkbox') el.checked = settings[key]; else el.value = settings[key]; }
   displayProvider();
+  message('');
+  document.querySelector('#settings-fields').disabled = false;
 }
 document.querySelector('#provider').addEventListener('change', displayProvider);
 document.querySelector('#open-bridge').addEventListener('click', () => chrome.tabs.create({ url: 'http://127.0.0.1:18458/' }));

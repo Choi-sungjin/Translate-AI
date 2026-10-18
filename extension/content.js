@@ -71,7 +71,7 @@
     entry.state = 'queued'; pageQueue.push(entry); pumpPage();
   }
   function pumpPage() {
-    while (pageEnabled && pageBusy < 3 && pageQueue.length) {
+    while (pageEnabled && pageBusy < (settings.provider === 'codex' ? 12 : 3) && pageQueue.length) {
       const entry = pageQueue.shift();
       if (!entry.node.isConnected || entries.get(entry.node) !== entry || entry.state !== 'queued') continue;
       pageBusy++; entry.state = 'loading'; const epoch = pageEpoch;

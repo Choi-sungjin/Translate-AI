@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-18",
+  "url": "https://docs.isaacsim.omniverse.nvidia.com/latest/ros2_tutorials/index.html",
+  "count": 12,
+  "beforeMs": 86944,
+  "afterMs": 13684,
+  "speedup": 6.35,
+  "apiKeyUsed": false,
+  "provider": "Official Codex CLI with existing ChatGPT login",
+  "measurement": "One comparison on the same 12 public text blocks. Before: sequential HTTP requests to v1.1.2 live bridge. After: simultaneous requests to isolated v1.2.0 bridge, coalesced into one model request. No translation cache used.",
+  "cometVerified": false,
+  "browser": {
+    "environment": "Isolated Chrome for Testing 156.0.8078.4; not the user browser",
+    "firstTwelveMs": 11951,
+    "completedMs": 20313,
+    "translatedBlocks": 22,
+    "originalPreserved": true,
+    "linksPreserved": true,
+    "originalRestored": true,
+    "inputMsDuringPage": 6536,
+    "paragraphsDoneWhenInputFinished": 0,
+    "inputRestored": true
+  }
+}

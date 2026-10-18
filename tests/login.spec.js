@@ -62,3 +62,55 @@ test('LIVE LOGIN: real ChatGPT translation updates Lexical model and restores Ko
   await expect(page.locator('#lexical-state')).toHaveText(original);
   console.log(JSON.stringify({ environment: 'Chrome for Testing, local real Lexical editor', livePerplexityVerified: false, provider: 'ChatGPT via official Codex CLI', original, translated, elapsedMs, restored: true }));
 });
+
+test('LIVE LOGIN: NVIDIA ROS 2 page keeps original content and links with batched Korean translation', async ({ context, extensionId, page }, testInfo) => {
+  test.skip(process.env.TRANSLATE_AI_LIVE_LOGIN !== '1', 'Local login test only.');
+  test.setTimeout(240000);
+  const { token } = JSON.parse(await readFile(path.join(stateDirectory(), 'bridge-state.json'), 'utf8'));
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#bridgeToken').fill(token);
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click();
+  await expect(options.locator('#status')).toContainText('저장했습니다'); await options.close();
+  await page.goto('https://docs.isaacsim.omniverse.nvidia.com/latest/ros2_tutorials/index.html', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('main')).toContainText('ROS (Robot Operating System)');
+  // Optional public-site cookie dialog may otherwise cover the evidence image.
+  const cookieReload = page.waitForEvent('domcontentloaded', { timeout: 10000 }).catch(() => {});
+  await page.getByText('Reject Optional', { exact: true }).click({ timeout: 5000 }).catch(() => {});
+  await cookieReload;
+  await page.waitForLoadState('load');
+  await expect(page.locator('main')).toContainText('ROS (Robot Operating System)');
+  const original = await page.locator('main').textContent();
+  const links = await page.locator('main a').evaluateAll(nodes => nodes.map(n => n.getAttribute('href')));
+  const started = Date.now(); await toggle(context, extensionId, page);
+  const done = page.locator('main .tai-translation:not(.tai-loading):not(.tai-error)');
+  const typing = await context.newPage(); await typing.goto(BASE); await typing.bringToFront();
+  const input = await typeInput(typing, '#message', '문서를 읽으면서 질문을 번역합니다.');
+  const inputStarted = Date.now(); await triple(typing);
+  await expect(input).toHaveValue(/[A-Za-z]/, { timeout: 120000 });
+  expect(await input.inputValue()).not.toMatch(/[가-힣]/);
+  const inputElapsedMs = Date.now() - inputStarted, paragraphsDoneWhenInputFinished = await done.count();
+  await typing.getByRole('button', { name: '원문 복구', exact: true }).click();
+  await expect(input).toHaveValue('문서를 읽으면서 질문을 번역합니다.');
+  await typing.close(); await page.bringToFront();
+  await expect.poll(() => done.count(), { timeout: 120000 }).toBeGreaterThanOrEqual(12);
+  const firstTwelveMs = Date.now() - started;
+  // Scroll the real public document so IntersectionObserver can discover its lower blocks.
+  for (let y = 600; y < await page.evaluate(() => document.body.scrollHeight); y += 600) {
+    await page.evaluate(top => scrollTo(0, top), y);
+    await page.waitForTimeout(100);
+  }
+  await expect(page.locator('main .tai-loading')).toHaveCount(0, { timeout: 120000 });
+  await expect(page.locator('main .tai-error')).toHaveCount(0);
+  const translations = await done.allTextContents();
+  expect(translations.filter(t => /[가-힣]/.test(t)).length).toBeGreaterThanOrEqual(12);
+  expect(await page.locator('main').evaluate(el => { const copy = el.cloneNode(true); copy.querySelectorAll('[data-tai-owned]').forEach(n => n.remove()); return copy.textContent; })).toBe(original);
+  expect(await page.locator('main a').evaluateAll(nodes => nodes.map(n => n.getAttribute('href')))).toEqual(links);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.screenshot({ path: testInfo.outputPath('nvidia-bilingual.png'), fullPage: true });
+  await toggle(context, extensionId, page);
+  await expect(page.locator('.tai-translation')).toHaveCount(0);
+  expect(await page.locator('main').textContent()).toBe(original);
+  const evidence = { environment: 'Isolated Chrome for Testing; not the user Comet browser', url: page.url(), provider: 'Actual ChatGPT login through Codex CLI', firstTwelveMs, completedMs: Date.now() - started, translated: translations.length, originalPreserved: true, linksPreserved: true, originalRestored: true, concurrentInput: { inputElapsedMs, paragraphsDoneWhenInputFinished, restored: true } };
+  await testInfo.attach('nvidia-login-evidence', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
+  console.log(JSON.stringify(evidence));
+});
