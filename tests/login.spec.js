@@ -3,6 +3,35 @@ import path from 'node:path';
 import { stateDirectory } from '../bridge/server.mjs';
 import { test, expect, BASE, toggle, triple, typeInput } from './fixtures.js';
 
+test('LIVE LOGIN: NVIDIA modal search keeps translation and restore controls usable', async ({ context, extensionId, page }, testInfo) => {
+  test.skip(process.env.TRANSLATE_AI_LIVE_LOGIN !== '1', 'Local login test only.');
+  test.setTimeout(180000);
+  const { token } = JSON.parse(await readFile(path.join(stateDirectory(), 'bridge-state.json'), 'utf8'));
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#bridgeToken').fill(token);
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click();
+  await expect(options.locator('#status')).toContainText('저장했습니다'); await options.close();
+  await page.goto('https://docs.isaacsim.omniverse.nvidia.com/latest/ros2_tutorials/index.html');
+  const cookieReload = page.waitForEvent('domcontentloaded', { timeout: 10000 }).catch(() => {});
+  await page.getByText('Reject Optional', { exact: true }).click({ timeout: 5000 }).catch(() => {});
+  await cookieReload;
+  await page.waitForLoadState('load');
+  await page.getByRole('button', { name: 'Search', exact: true }).click({ timeout: 15000 });
+  const original = '아이작심에서 로스 연결 방법을 알려주세요.';
+  const input = await typeInput(page, 'dialog[open] input[type="search"]', original);
+  const started = Date.now(); await triple(page);
+  await expect(input).toHaveValue(/[A-Za-z]/, { timeout: 120000 });
+  const translated = await input.inputValue(); expect(translated).not.toMatch(/[가-힣]/);
+  await expect(input).toBeFocused();
+  const restore = page.getByRole('button', { name: '원문 복구', exact: true });
+  await expect(restore).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('nvidia-modal-translated.png'), fullPage: true });
+  await restore.click(); await expect(input).toHaveValue(original);
+  await expect(page.locator('dialog[open]')).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath('nvidia-modal-restored.png'), fullPage: true });
+  console.log(JSON.stringify({ environment:'Isolated Chrome for Testing', provider:'Actual ChatGPT login through Codex CLI', original, translated, elapsedMs:Date.now()-started, restored:true, modalRemainsOpen:true }));
+});
+
 test('LOGIN SETUP: extension opens local pairing dashboard with real login status', async ({ context, extensionId }) => {
   test.skip(process.env.TRANSLATE_AI_LIVE_LOGIN !== '1', 'Local login test only.');
   const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);

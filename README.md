@@ -4,6 +4,8 @@
 
 **v1.1.0: 내 ChatGPT 계정 로그인으로 번역합니다.** 이 PC에서 실행하는 공식 Codex CLI가 로그인을 처리하며 별도 OpenAI API 키가 필요하지 않습니다. 기존 무료 번역·개인 API 방식도 선택할 수 있습니다.
 
+**v1.2.2:** NVIDIA 문서처럼 팝업 검색창을 여는 사이트에서 번역 안내와 **원문 복구** 버튼이 검색창 뒤에 가려지는 문제를 수정했습니다. [검색창 수정 기록](docs/SEARCH-1.2.2.md)
+
 **v1.2.1:** 입력 번역의 **원문 복구** 버튼은 자동으로 사라지지 않습니다. 복구하거나 **닫기**를 누를 때까지 유지하며, 새 번역을 시작하면 새 알림으로 바뀝니다. 일반 안내는 30초 동안 표시됩니다. 실제 Chrome에서 50초 이상 유지 후 입력 원문 복구, Perplexity 입력 번역·복구, NVIDIA 문서 22/22 병기·원문 복원을 확인했습니다. [최신 검증 기록](docs/CHROME-1.2.1.md)
 
 **v1.2.0:** 페이지 문단을 묶어 번역하고 입력 번역은 별도로 처리합니다. 동일한 NVIDIA 문서 12개 항목의 실제 ChatGPT 번역이 86.9초에서 13.7초로 줄었습니다(1회 비교). 실제 Comet에서 NVIDIA 22/22 병기·페이지 원문 복원과 스페이스 3회 입력 번역을 확인했습니다. [측정 방법](docs/PERFORMANCE.md), [Comet 검증](docs/COMET.md)
@@ -14,9 +16,9 @@
 
 ## 설치
 
-1. [최신 v1.2.1 릴리스](https://github.com/Choi-sungjin/Translate-AI/releases/tag/v1.2.1)의 **Translate-AI-1.2.1-desktop.zip**을 내려받아 풉니다. 이 저장소를 복제해 사용할 수도 있습니다.
+1. [최신 v1.2.2 릴리스](https://github.com/Choi-sungjin/Translate-AI/releases/tag/v1.2.2)의 **Translate-AI-1.2.2-desktop.zip**을 내려받아 풉니다. 이 저장소를 복제해 사용할 수도 있습니다.
 2. Chrome 주소창에 `chrome://extensions`를 입력하고 **개발자 모드**를 켭니다.
-3. **압축해제된 확장 프로그램을 로드합니다**를 누르고 **`extension` 폴더**를 선택합니다. 확장만 들어 있는 `Translate-AI-1.2.1.zip`을 푼 경우에는 `manifest.json`이 있는 폴더를 선택합니다.
+3. **압축해제된 확장 프로그램을 로드합니다**를 누르고 **`extension` 폴더**를 선택합니다. 확장만 들어 있는 `Translate-AI-1.2.2.zip`을 푼 경우에는 `manifest.json`이 있는 폴더를 선택합니다.
 4. 기존 웹페이지를 새로고침하고 툴바에서 Translate AI를 고정합니다.
 
 확장 자체는 빌드 과정 없이 로드할 수 있습니다. ChatGPT 로그인 번역에는 아래 로컬 연결 프로그램이 필요합니다. Chrome 웹 스토어에 게시한 제품은 아닙니다.
@@ -91,7 +93,7 @@ npm run package
 - `npm run test:live`: 실제 MyMemory API, 공개 사이트, 입력창 번역 검사. 네트워크 연결과 무료 서비스의 잔여 한도가 필요합니다.
 - `npm run test:login`: 실행 중인 로컬 연결 프로그램과 기존 ChatGPT 로그인으로 실제 확장 번역을 시험. 계정 사용량을 소비합니다.
 - `npm test`: 텍스트·로컬 연결 보안 시험 + 회귀·무료 API 브라우저 시험. ChatGPT 로그인 시험은 별도입니다.
-- `npm run package`: `dist/Translate-AI-1.2.1.zip`(확장만), `dist/Translate-AI-1.2.1-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
+- `npm run package`: `dist/Translate-AI-1.2.2.zip`(확장만), `dist/Translate-AI-1.2.2-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
 
 검증 범위와 실제 번역 예문: [ChatGPT 로그인 검증 보고서](docs/CHATGPT-LOGIN.md), [v1.0 검증 보고서](docs/VERIFICATION.md). 설정 화면: [스크린샷](docs/screenshots/chatgpt-settings.png).
 

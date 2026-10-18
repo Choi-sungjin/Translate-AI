@@ -14,8 +14,17 @@
 
   // A shadow root keeps the status UI separate from the page's styles and text extraction.
   let toastHost, toastRoot, toastTimer, inputNoticeUntil = 0;
+  function placeNotice() {
+    if (!toastHost) return;
+    // A modal makes the rest of the document inert. Keep controls in that modal,
+    // then use the top layer so its clipping/transform cannot hide the notice.
+    const modal = document.activeElement?.closest('dialog:modal') || [...document.querySelectorAll('dialog:modal')].at(-1);
+    const parent = modal || document.documentElement;
+    if (toastHost.parentElement !== parent) parent.append(toastHost);
+    if (!toastHost.matches(':popover-open')) toastHost.showPopover();
+  }
   function dismissNotice() {
-    clearTimeout(toastTimer); inputNoticeUntil = 0; toastHost?.remove();
+    clearTimeout(toastTimer); inputNoticeUntil = 0; toastHost?.remove(); toastHost = toastRoot = null;
     if (pageEnabled) updatePageStatus();
   }
   function notify(text, action, persistent = false, sticky = Boolean(action)) {
@@ -26,27 +35,32 @@
       toastHost = document.createElement('div');
       toastHost.dataset.taiOwned = 'ui';
       toastHost.id = 'translate-ai-status';
-      toastHost.style.cssText = 'position:fixed!important;top:16px!important;left:50%!important;transform:translateX(-50%)!important;z-index:2147483647!important;width:max-content!important;max-width:min(440px,calc(100vw - 32px))!important;';
+      toastHost.popover = 'manual';
+      // Sites may close their dialog on any click outside its bounding box.
+      toastHost.addEventListener('click', event => event.stopPropagation());
+      toastHost.style.cssText = 'position:fixed!important;inset:16px auto auto 50%!important;transform:translateX(-50%)!important;z-index:2147483647!important;width:max-content!important;max-width:min(440px,calc(100vw - 32px))!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;overflow:visible!important;';
       toastRoot = toastHost.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
       style.textContent = ':host{all:initial}.box{font:13px/1.6 system-ui,sans-serif;background:#132c29;color:#fff;padding:13px 16px;border-radius:13px;box-shadow:0 7px 30px #0003;display:flex;align-items:center;gap:12px}button{font:inherit;white-space:nowrap;cursor:pointer;border:1px solid #aac7be;background:#234b43;color:white;border-radius:7px;padding:5px 10px}button:focus-visible{outline:3px solid #d4e8a3}';
       const box = document.createElement('div'); box.className = 'box'; box.setAttribute('role', 'status');
-      toastRoot.append(style, box); document.documentElement.append(toastHost);
+      toastRoot.append(style, box);
     }
     const box = toastRoot.querySelector('.box'); box.replaceChildren();
     const label = document.createElement('span'); label.textContent = text; box.append(label);
     if (action) {
-      const button = document.createElement('button'); button.textContent = action.label;
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = action.label;
       button.addEventListener('mousedown', e => e.preventDefault());
       button.addEventListener('click', action.run); box.append(button);
     }
     if (!persistent) {
-      const close = document.createElement('button'); close.textContent = '닫기'; close.setAttribute('aria-label', '번역 알림 닫기');
+      const close = document.createElement('button'); close.type = 'button'; close.textContent = '닫기'; close.setAttribute('aria-label', '번역 알림 닫기');
       close.addEventListener('mousedown', e => e.preventDefault());
       close.addEventListener('click', dismissNotice); box.append(close);
       if (!sticky) toastTimer = setTimeout(dismissNotice, 30000);
     }
+    placeNotice();
   }
+  document.addEventListener('close', event => { if (event.target instanceof HTMLDialogElement) placeNotice(); }, true);
 
   // Page translation retains the original nodes and their event handlers.
   const BLOCKS = 'p,h1,h2,h3,h4,h5,h6,li,blockquote,figcaption,td,th,dt,dd,[role="paragraph"]';
@@ -282,7 +296,7 @@
   document.addEventListener('beforeinput', event => { bump(editableRoot(event.composedPath()[0])); }, true);
   document.addEventListener('focusout', event => { sequence = null; bump(editableRoot(event.target)); }, true);
   document.addEventListener('pointerdown', () => { sequence = null; }, true);
-  document.addEventListener('focusin', () => { void refreshSettings().catch(() => {}); }, true);
+  document.addEventListener('focusin', () => { placeNotice(); void refreshSettings().catch(() => {}); }, true);
   document.addEventListener('keydown', event => {
     if (event.key !== ' ' || event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || event.isComposing || composing || event.keyCode === 229 || !settings.inputEnabled) { sequence = null; return; }
     const el = editableRoot(event.composedPath()[0]); const a = adapter(el);

@@ -203,6 +203,47 @@ test('persistent restore never overwrites edits made after translation', async (
   await expect(page.locator('#translate-ai-status')).toContainText('원문 복구를 취소했습니다');
 });
 
+test('modal search translation and persistent restore remain clickable above the backdrop', async ({ page }) => {
+  await page.evaluate(() => {
+    const dialog = document.createElement('dialog'); dialog.id = 'search-dialog';
+    dialog.style.cssText = 'transform:translateZ(0);overflow:hidden;width:480px;height:100px';
+    dialog.innerHTML = '<form><input type="search" id="modal-search" aria-label="Search the docs"></form>';
+    dialog.addEventListener('click', event => {
+      const rect = dialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+    });
+    document.body.append(dialog); dialog.showModal();
+  });
+  const input = await typeInput(page, '#modal-search', '검색창 번역'); await triple(page);
+  await expect(input).toHaveValue('Translated: 검색창 번역');
+  await expect(input).toBeFocused();
+  const restore = page.getByRole('button', { name: '원문 복구', exact: true });
+  await expect(restore).toBeVisible();
+  expect((await restore.boundingBox()).y).toBeLessThan(100);
+  await page.waitForTimeout(12500);
+  await restore.click();
+  await expect(input).toHaveValue('검색창 번역');
+  await expect(page.locator('#search-dialog')).toHaveAttribute('open', '');
+  await expect(page.locator('body')).not.toHaveAttribute('data-submitted', 'yes');
+});
+
+test('opening and closing a modal keeps page controls accessible without reviving dismissed notices', async ({ context, extensionId, page }) => {
+  await toggle(context, extensionId, page);
+  await expect(page.locator('#article .tai-translation')).toContainText('Translated:');
+  await page.evaluate(() => {
+    const dialog = document.createElement('dialog'); dialog.id = 'search-dialog';
+    dialog.innerHTML = '<input type="search" aria-label="Search the docs">';
+    document.body.append(dialog); dialog.showModal();
+  });
+  await page.getByRole('button', { name: '원문 보기', exact: true }).click();
+  await expect(page.locator('.tai-translation')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#search-dialog')).not.toHaveAttribute('open', '');
+  await page.getByRole('button', { name: '번역 알림 닫기', exact: true }).click();
+  await page.locator('#text').focus();
+  await expect(page.locator('#translate-ai-status')).toHaveCount(0);
+});
+
 test('ChatGPT login bridge settings and both translation paths work without an API key', async ({ context, extensionId, page }) => {
   const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
   await options.locator('#apiKey').fill('');
