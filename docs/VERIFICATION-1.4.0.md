@@ -40,3 +40,15 @@ GPT-6 Luna와 GPT-5.6 Luna 각각 문단 한국어 번역, 입력 영어 번역,
 ## Windows 검사
 
 [GitHub Actions](https://github.com/Choi-sungjin/Translate-AI/actions/workflows/test.yml)의 `windows-launcher` 작업은 Windows 환경에서 Codex 실행 파일 버전 확인, 단위 검사, 기존 PowerShell 실행 스크립트 12개 모의 시나리오, ZIP 생성을 실행합니다. Windows 사용자 데스크톱에서 로그인과 실제 번역을 재검증한 것으로 해석하면 안 됩니다.
+
+## 추가 검증: 사용자의 기존 Chrome 프로필
+
+2026-10-19, 확장을 직접 설치한 기존 Chrome 프로필에서 연결 코드를 저장한 뒤 검사했습니다. 별도 Chrome for Testing 결과와 구분합니다.
+
+1. 로컬 검사 페이지의 입력창에 `리눅스에서 번역 연결이 정상적으로 작동합니다.`를 입력하고 스페이스를 세 번 눌렀습니다.
+2. 실제 GPT-6.1 Sol 응답으로 `The translation connection works properly on Linux.`가 표시됐습니다.
+3. `원문 복구` 버튼을 눌러 처음 입력한 한국어 문장으로 정확히 복구됐습니다.
+
+연결 코드 저장 전에는 `설정에서 ChatGPT 로컬 연결 코드를 저장하세요.`가 표시됐고 원문이 유지됐습니다. 저장 후 위 번역과 복구가 통과했습니다. 연결 코드나 계정 인증 정보는 검증 기록에 포함하지 않습니다.
+
+이 추가 검사는 설치된 확장의 입력 번역과 복구를 확인합니다. 자동화 키 입력으로는 Chrome 자체의 Alt+A 명령이 실행되지 않아, 기존 사용자 프로필의 페이지 번역 단축키는 이번 검사에서 확인하지 못했습니다. 페이지 번역·복원의 별도 테스트 브라우저 검증 결과는 위 표와 같습니다.
