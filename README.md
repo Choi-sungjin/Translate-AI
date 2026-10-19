@@ -2,6 +2,16 @@
 
 웹페이지는 **원문과 한국어를 함께**, 입력한 문장은 **스페이스바 3회로 바로 번역**하는 Chrome/Edge Manifest V3 확장 프로그램입니다.
 
+**v1.4.0 — Windows / Linux 선택 다운로드**
+
+| 운영체제 | 다운로드 | 시작 |
+|---|---|---|
+| Windows | [Windows ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.4.0/Translate-AI-1.4.0-windows.zip) | `Start-Translate-AI.cmd` |
+| Linux | [Linux ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.4.0/Translate-AI-1.4.0-linux.zip) | `sh Start-Translate-AI.sh` |
+| 확장만 · 공용 | [확장 ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.4.0/Translate-AI-1.4.0-extension.zip) | 브라우저에서 압축해제된 확장 로드 |
+
+두 운영체제 모두 **Node.js 22 이상과 npm**, Chrome/Edge 계열 브라우저가 필요합니다. ZIP에 Node.js나 로그인 정보는 포함하지 않습니다. 첫 시작 시 인터넷으로 잠금 파일에 지정된 공식 Codex 의존성을 설치합니다. Linux는 x64·arm64용 의존성을 선택하며, 이 릴리스의 실기 검증 환경은 Ubuntu 24.04 x64입니다. [1.4.0 검증 범위](docs/VERIFICATION-1.4.0.md)
+
 **v1.1.0: 내 ChatGPT 계정 로그인으로 번역합니다.** 이 PC에서 실행하는 공식 Codex CLI가 로그인을 처리하며 별도 OpenAI API 키가 필요하지 않습니다. 기존 무료 번역·개인 API 방식도 선택할 수 있습니다.
 
 **v1.3.0:** 설정 화면과 팝업에서 **GPT-6.1 Sol / GPT-6 Luna / GPT-5.6 Luna**를 선택할 수 있습니다. 실제 로그인 비교에서 입력 번역 중앙값은 각각 7.53/5.68/6.00초, 문단 3개 묶음은 8.70/6.75/6.01초였습니다. 모델·방식당 3회 측정이므로 모든 자료에서의 속도 순위를 보장하지 않습니다. [선택 방법·속도·번역 품질 비교](docs/MODELS-1.3.0.md)
@@ -22,23 +32,44 @@
 
 ## 설치
 
-1. [최신 v1.3.0 릴리스](https://github.com/Choi-sungjin/Translate-AI/releases/tag/v1.3.0)의 **Translate-AI-1.3.0-desktop.zip**을 내려받아 풉니다. 이 저장소를 복제해 사용할 수도 있습니다.
+1. 위 표에서 운영체제에 맞는 ZIP을 내려받아 **계속 보관할 폴더**에 풉니다. 이 저장소를 복제해 사용할 수도 있습니다.
 2. Chrome 주소창에 `chrome://extensions`를 입력하고 **개발자 모드**를 켭니다.
-3. **압축해제된 확장 프로그램을 로드합니다**를 누르고 **`extension` 폴더**를 선택합니다. 확장만 들어 있는 `Translate-AI-1.3.0.zip`을 푼 경우에는 `manifest.json`이 있는 폴더를 선택합니다.
+3. **압축해제된 확장 프로그램을 로드합니다**를 누르고 **`extension` 폴더**를 선택합니다. 확장만 들어 있는 `Translate-AI-1.4.0-extension.zip`을 푼 경우에는 `manifest.json`이 있는 폴더를 선택합니다.
 4. 기존 웹페이지를 새로고침하고 툴바에서 Translate AI를 고정합니다.
 
 확장 자체는 빌드 과정 없이 로드할 수 있습니다. ChatGPT 로그인 번역에는 아래 로컬 연결 프로그램이 필요합니다. Chrome 웹 스토어에 게시한 제품은 아닙니다.
 
 ### ChatGPT 계정 연결
 
-1. **Node.js 22 이상**을 설치합니다. Windows에서 전체 패키지의 **`Start-Translate-AI.cmd`**를 실행합니다. 최초 실행 시 공식 Codex CLI 의존성을 설치하고, 이후 로컬 연결 프로그램을 백그라운드로 실행합니다.
+1. **Node.js 22 이상**을 설치합니다. Windows는 **`Start-Translate-AI.cmd`**, Linux는 터미널에서 **`sh Start-Translate-AI.sh`**를 실행합니다. 최초 실행 시 공식 Codex CLI 의존성을 설치하고, 이후 로컬 연결 프로그램을 백그라운드로 실행합니다.
 2. 열리는 연결 화면에서 로그인 상태를 확인합니다. 기존 Codex의 ChatGPT 로그인을 재사용합니다. 로그인이 필요하다면 이 프로젝트 폴더에서 **`npx codex login`**을 실행하고 공식 브라우저 로그인을 직접 완료합니다.
 3. 연결 화면의 **로컬 연결 코드**를 복사합니다. 확장 설정 → **ChatGPT 계정 로그인** → **로컬 연결 코드**에 붙여넣고 저장합니다.
 4. **저장한 연결 상태 확인**, **저장한 설정으로 연결 확인**으로 확인합니다. 기존 v1.0 사용자는 확장을 새로고침한 뒤 서비스를 직접 ChatGPT로 바꾸세요.
 
 이 코드는 이 PC의 확장과 로컬 프로그램 사이의 연결 코드입니다. ChatGPT OAuth 토큰이나 API 키가 아니며 다른 사람과 공유하지 마세요. 계정 로그인 정보는 공식 CLI 저장소에 그대로 남습니다. 브라우저 쿠키나 OAuth 토큰을 확장으로 복사하지 않습니다.
 
-`Start-Translate-AI.cmd`는 Windows 로그인 시 자동 실행하도록 등록하지 않습니다. PC 재부팅 후 다시 실행해야 합니다. 종료하려면 **`Stop-Translate-AI.cmd`**를 사용합니다. PowerShell 스크립트 실행이 제한된 환경이나 다른 운영체제에서는 터미널에서 `npm ci`, `npm run bridge`를 실행하고 `http://127.0.0.1:18458/`을 직접 여세요. 이 경우 종료는 해당 터미널에서 Ctrl+C입니다.
+시작 스크립트는 로그인 시 자동 실행을 등록하지 않습니다. 재부팅 후 다시 시작하세요. Windows 종료·재시작은 `Stop-Translate-AI.cmd` / `Restart-Translate-AI.cmd`를 사용합니다.
+
+### Linux 설치와 앱 메뉴
+
+압축을 푼 폴더에서 실행하세요. `sudo`는 필요하지 않습니다.
+
+```sh
+sh Install-Translate-AI.sh   # 앱 메뉴에 Translate AI 등록 (선택)
+sh Start-Translate-AI.sh     # 연결 프로그램 시작 + 연결 화면 열기
+sh Stop-Translate-AI.sh      # 이 설치 폴더의 연결 프로그램만 종료
+sh Restart-Translate-AI.sh   # 업데이트 후 재시작
+```
+
+- 앱 메뉴의 **Translate AI**로 시작할 수 있고, 메뉴의 추가 동작에서 재시작·종료할 수 있습니다. 등록한 폴더를 옮겼거나 Node.js 설치 경로가 바뀌면 `sh Install-Translate-AI.sh`를 다시 실행하세요.
+- 확장은 Chrome의 `chrome://extensions` 또는 Edge의 `edge://extensions`에서 개발자 모드를 켜고 **이 폴더의 `extension`**을 로드합니다. 앱 메뉴 등록과 확장 설치는 별도입니다.
+- 시작·재시작에 `--no-open`을 붙이면 브라우저를 열지 않습니다. 시작 버튼을 다시 눌러도 연결 프로그램을 중복 실행하지 않습니다.
+- 다른 프로그램이나 다른 설치 폴더가 포트 18458을 사용하면 중단합니다. 번역 처리 중에는 종료·재시작을 거부합니다. 잠깐 겹쳐 실행한 명령은 잠금 때문에 종료 코드 73으로 중단되므로 앞선 명령이 끝난 뒤 재시도하세요.
+- 연결 코드와 로그: `${XDG_DATA_HOME:-~/.local/share}/Translate-AI/`. 연결 코드는 업데이트·재시작해도 유지됩니다. 로그 파일은 `bridge.log`입니다.
+- `flock`이 없다면 배포판의 `util-linux` 패키지가 필요합니다. 브라우저 자동 열기에는 `xdg-open`을 사용하며, 없으면 `http://127.0.0.1:18458/`을 직접 여세요. X11·Wayland 입력을 직접 가로채지 않고 브라우저 확장 안에서 단축키를 처리합니다. Wayland 실기 검증은 별도입니다.
+- 앱 메뉴 등록 해제: `~/.local/share/applications/translate-ai.desktop`(XDG_DATA_HOME을 썼다면 그 아래 `applications`)과 `~/.local/bin/translate-ai`를 삭제합니다. 먼저 연결 프로그램을 종료하세요. 로그인 정보는 삭제하지 않습니다.
+
+실행 스크립트 대신 `npm ci --omit=dev --ignore-scripts`, `npm run bridge`를 실행할 수도 있습니다. 이 경우 종료는 해당 터미널에서 Ctrl+C입니다. 업데이트 후에는 연결 프로그램 재시작 → 확장 새로고침 → 웹페이지 새로고침 순서로 적용하세요.
 
 ## 사용
 
@@ -88,14 +119,16 @@ HTTP/HTTPS 사이트 접근 권한은 문단 읽기·번역문 표시·입력 �
 
 ## 개발과 검증
 
-Node.js 22 이상 권장:
+Git 소스 체크아웃에서 Node.js 22 이상:
 
 ```sh
 npm ci
 npx playwright install chromium
 npm run check
 npm test
+npm run test:linux  # Linux에서 포트 18458이 비어 있을 때
 npm run package
+npm run test:package
 ```
 
 - `npm run test:regression`: 실제 확장을 로드한 Chrome for Testing + 결정적인 로컬 API 응답으로 회귀 동작 검사.
@@ -105,6 +138,6 @@ npm run package
 - `npm run benchmark:models`: 세 모델의 실제 로그인 번역 속도와 번역문을 비교합니다. 계정 사용량을 소비합니다.
 - Windows 실행 파일 검사: `powershell.exe -NoProfile -File tests/windows-launcher.test.ps1`. 실제 프로세스·네트워크·브라우저·사용자 앱 데이터 쓰기를 모의 처리한 12개 시나리오입니다.
 - `npm test`: 텍스트·로컬 연결 보안 시험 + 회귀·무료 API 브라우저 시험. ChatGPT 로그인 시험은 별도입니다.
-- `npm run package`: `dist/Translate-AI-1.3.0.zip`(확장만), `dist/Translate-AI-1.3.0-desktop.zip`(전체 소스·로컬 연결), SHA-256 생성. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
+- `npm run package`: `dist/`에 `-windows.zip`, `-linux.zip`, `-extension.zip`과 `SHA256SUMS.txt`를 생성합니다. Git에 추적된 배포 대상 파일만 포함하며, 실행용 ZIP에는 개발 테스트 도구를 넣지 않습니다. 개발 검사는 저장소를 복제해서 실행하세요. 사용자 설정·키·브라우저 프로필·node_modules는 포함하지 않습니다.
 
 검증 범위와 실제 번역 예문: [ChatGPT 로그인 검증 보고서](docs/CHATGPT-LOGIN.md), [v1.0 검증 보고서](docs/VERIFICATION.md). 설정 화면: [스크린샷](docs/screenshots/chatgpt-settings.png).

@@ -2,13 +2,30 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import http from 'node:http';
-import { createBridge } from '../bridge/server.mjs';
+import { createBridge, stopBridge } from '../bridge/server.mjs';
 import { parseTranslation, parseBatchTranslation, translationArgs } from '../bridge/codex.mjs';
 import { createTranslationQueue } from '../bridge/queue.mjs';
 import { createPageBatcher } from '../extension/page-batches.js';
 import { validateSettings } from '../extension/settings.js';
 
 const token = 'a'.repeat(64);
+test('graceful shutdown preserves a translation admitted just before termination', async () => {
+  let finish, started;
+  const admitted = new Promise(resolve => { started = resolve; });
+  const server = createBridge({ token, cwd: '.', translate: () => { started(); return new Promise(resolve => { finish = resolve; }); } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const url = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const response = fetch(`${url}/v1/translate`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Hello', target: 'ko', mode: 'input' }) }).then(r => r.json());
+    await admitted;
+    const closed = once(server, 'close');
+    stopBridge(server);
+    await assert.rejects(fetch(`${url}/health`));
+    finish('안녕하세요');
+    assert.equal((await response).text, '안녕하세요');
+    await closed;
+  } finally { server.closeAllConnections(); server.close(); }
+});
 async function fixture(t) {
   const requests = [];
   const server = createBridge({ token, cwd: '.', status: async () => ({ loggedIn: true, method: 'ChatGPT' }), translate: async data => { requests.push(data); return '번역 결과'; }, translateBatch: async data => { requests.push(data); return data.texts.map(t => `번역 ${t}`); } });

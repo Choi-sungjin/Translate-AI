@@ -9,11 +9,19 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - run: npx --no-install codex --version
       - run: npx playwright install --with-deps chromium
       - run: npm run check
       - run: npm run test:unit
+      - run: npm run test:linux
       - run: npm run test:regression
+      - run: npm run package
+      - run: npm run test:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Translate-AI-downloads
+          path: dist/
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -23,4 +31,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx --no-install codex --version
+      - run: npm run check
+      - run: npm run test:unit
       - run: powershell.exe -NoProfile -File tests/windows-launcher.test.ps1
+      - run: npm run package

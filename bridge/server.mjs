@@ -9,7 +9,9 @@ import { createTranslationQueue } from './queue.mjs';
 import { CODEX_MODELS, validateCodexModel } from '../extension/models.js';
 
 export const PORT = 18458;
-export const stateDirectory = () => path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), '.local', 'share'), 'Translate-AI');
+export const stateDirectory = () => path.join(
+  (process.platform === 'win32' ? process.env.LOCALAPPDATA : process.env.XDG_DATA_HOME) || path.join(os.homedir(), '.local', 'share'), 'Translate-AI');
+const { version } = JSON.parse(await readFile(new URL('../extension/manifest.json', import.meta.url), 'utf8'));
 export async function loadState(dir) {
   await mkdir(dir, { recursive: true, mode: 0o700 });
   const file = path.join(dir, 'bridge-state.json');
@@ -40,7 +42,7 @@ export function createBridge({ token, cwd, translate = translateWithCodex, trans
     if (req.headers.host !== authority || (origin && origin !== localOrigin && !/^chrome-extension:\/\/[a-p]{32}$/.test(origin))) { json(403, { error: '허용되지 않은 접근입니다.' }); return; }
     if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
     if (req.method === 'OPTIONS') { res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type'); res.setHeader('Access-Control-Allow-Methods', 'GET,POST'); res.writeHead(204); res.end(); return; }
-    if (req.method === 'GET' && req.url === '/health') { json(200, { name: 'translate-ai-bridge', version: '1.3.0', pageBatchTransport: true, modelSelection: true, ...queue.stats() }); return; }
+    if (req.method === 'GET' && req.url === '/health') { json(200, { name: 'translate-ai-bridge', version, pageBatchTransport: true, modelSelection: true, ...queue.stats() }); return; }
     if (req.method === 'GET' && ['/', '/dashboard.js'].includes(req.url)) {
       // Pairing code is only available to same-origin local navigation, never CORS.
       if ((origin && origin !== localOrigin) || !['none', 'same-origin', undefined].includes(req.headers['sec-fetch-site'])) { json(403, { error: '로컬 연결 화면을 직접 여세요.' }); return; }
@@ -78,10 +80,20 @@ export function createBridge({ token, cwd, translate = translateWithCodex, trans
   server.requestTimeout = 15000;
   return server;
 }
+const drainingServers = new WeakSet();
+export function stopBridge(server) {
+  if (drainingServers.has(server)) return;
+  drainingServers.add(server);
+  // Stop accepting connections, but let requests already admitted finish. This also
+  // covers a translation arriving between a launcher's health check and SIGTERM.
+  server.close();
+  server.closeIdleConnections();
+}
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const dir = stateDirectory(), state = await loadState(dir), cwd = path.join(dir, 'translation-workspace');
   await mkdir(cwd, { recursive: true });
   const server = createBridge({ token: state.token, cwd });
+  process.on('SIGTERM', () => stopBridge(server));
   server.on('error', error => { console.error(error.code === 'EADDRINUSE' ? '로컬 연결이 이미 실행 중이거나 포트 18458을 사용 중입니다.' : '로컬 연결을 시작하지 못했습니다.'); process.exitCode = 1; });
   server.listen(PORT, '127.0.0.1', () => console.log(`Translate AI: http://127.0.0.1:${PORT}/ — ChatGPT login stays in Codex CLI.`));
 }
