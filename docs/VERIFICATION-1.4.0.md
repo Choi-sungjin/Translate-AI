@@ -10,7 +10,7 @@
 | 단위·보안·종료 처리 | `npm run test:unit` | 21 passed |
 | 브라우저 회귀 | `npm run test:regression` | 25 passed |
 | Linux 실행 | `npm run test:linux` | 실제 프로세스 통합 검사 1 passed (중복·공백 경로·다른 폴더·포트 충돌·반복 종료 포함) |
-| 실제 ChatGPT 로그인 | `npm run test:login -- --grep "selecting each Luna|LOGIN SETUP|ChatGPT OAuth"` | 3 passed, Sol 및 Luna 2종 |
+| 실제 ChatGPT 로그인 | `npm run test:login -- --grep "selecting each Luna\|LOGIN SETUP\|ChatGPT OAuth"` | 3 passed, Sol 및 Luna 2종 |
 | 실제 무료 서비스 | `npm run test:live` | 1 passed |
 | 배포 파일 구성·체크섬 | `npm run package && npm run test:package` | 3개 ZIP, 1 passed |
 
