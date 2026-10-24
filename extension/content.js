@@ -265,9 +265,13 @@
       }
     };
   }
-  const revisions = new WeakMap(), jobs = new WeakMap();
+  const revisions = new WeakMap(), editRevisions = new WeakMap(), jobs = new WeakMap();
   let sequence = null, composing = false;
-  function bump(el) { if (el) revisions.set(el, (revisions.get(el) || 0) + 1); }
+  function bump(el, edited = true) {
+    if (!el) return;
+    revisions.set(el, (revisions.get(el) || 0) + 1);
+    if (edited) editRevisions.set(el, (editRevisions.get(el) || 0) + 1);
+  }
   function focused(el) { return el === document.activeElement || el.contains(document.activeElement); }
   async function translateInput(el, a) {
     if (!a || !settings.inputEnabled) return;
@@ -283,10 +287,12 @@
       if (!el.isConnected || !focused(el) || (revisions.get(el) || 0) !== revision || a.read() !== original) {
         notify('입력이 바뀌어 번역을 적용하지 않았습니다.'); return;
       }
-      await a.set(result.text); const appliedRevision = revisions.get(el) || 0;
+      await a.set(result.text); const appliedEditRevision = editRevisions.get(el) || 0;
       const modelLabel = result.provider === 'codex' && result.model ? ` · ${result.model.replace(/^gpt-/, 'GPT-').replace(/-(sol|luna)$/, (_, name) => ` ${name[0].toUpperCase()}${name.slice(1)}`)}` : '';
       notify(`입력창을 번역했습니다.${modelLabel}`, { label: '원문 복구', run: async () => {
-        if (!el.isConnected || a.read() !== result.text || (revisions.get(el) || 0) !== appliedRevision) { notify('입력이 바뀌어 원문 복구를 취소했습니다.'); return; }
+        // Focus can move to the restore button or another tab without editing.
+        // Keep edit history protection even if text was changed and changed back.
+        if (!el.isConnected || a.read() !== result.text || (editRevisions.get(el) || 0) !== appliedEditRevision) { notify('입력이 바뀌어 원문 복구를 취소했습니다.'); return; }
         try { el.focus(); await a.set(original, Math.max(0, caret)); notify('입력 원문을 복구했습니다.'); }
         catch (error) { notify(error.message); }
       } });
@@ -296,7 +302,7 @@
   document.addEventListener('compositionend', event => { composing = false; sequence = null; bump(editableRoot(event.target)); }, true);
   document.addEventListener('input', event => { bump(editableRoot(event.composedPath()[0])); }, true);
   document.addEventListener('beforeinput', event => { bump(editableRoot(event.composedPath()[0])); }, true);
-  document.addEventListener('focusout', event => { sequence = null; bump(editableRoot(event.target)); }, true);
+  document.addEventListener('focusout', event => { sequence = null; bump(editableRoot(event.target), false); }, true);
   document.addEventListener('pointerdown', () => { sequence = null; }, true);
   document.addEventListener('focusin', () => { placeNotice(); void refreshSettings().catch(() => {}); }, true);
   document.addEventListener('keydown', event => {

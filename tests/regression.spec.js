@@ -229,6 +229,21 @@ test('persistent restore never overwrites edits made after translation', async (
   await expect(page.locator('#translate-ai-status')).toContainText('원문 복구를 취소했습니다');
 });
 
+test('restoration survives focus changes and keyboard access without overwriting edit history', async ({ page }) => {
+  const input = await typeInput(page, '#text', '초점을 옮겨도 원문 유지'); await triple(page);
+  await expect(input).toHaveValue('Translated: 초점을 옮겨도 원문 유지');
+  const restore = page.getByRole('button', { name: '원문 복구', exact: true });
+  await restore.focus(); await page.keyboard.press('Enter');
+  await expect(input).toHaveValue('초점을 옮겨도 원문 유지');
+  await input.fill('수정 이력 보호'); await input.press('End'); await triple(page);
+  await expect(input).toHaveValue('Translated: 수정 이력 보호');
+  await input.fill('다른 문장');
+  await input.fill('Translated: 수정 이력 보호');
+  await restore.focus(); await page.keyboard.press('Enter');
+  await expect(input).toHaveValue('Translated: 수정 이력 보호');
+  await expect(page.locator('#translate-ai-status')).toContainText('원문 복구를 취소했습니다');
+});
+
 test('modal search translation and persistent restore remain clickable above the backdrop', async ({ page }) => {
   await page.evaluate(() => {
     const dialog = document.createElement('dialog'); dialog.id = 'search-dialog';
