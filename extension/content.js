@@ -69,9 +69,15 @@
   let mutationObserver, intersectionObserver;
   const entries = new Map();
   const pageQueue = [];
+  function headingPermalink(text) {
+    const link = text.parentElement?.closest('a.headerlink[href^="#"],a.header-anchor[href^="#"],a.anchor-link[href^="#"]');
+    // Sphinx and similar docs add hover-only permalink glyphs to headings.
+    // Keep the live link intact and preserve meaningful text such as C#.
+    return link?.closest('h1,h2,h3,h4,h5,h6') && /^[#¶§🔗]+$/u.test(link.textContent.trim());
+  }
   function sourceText(node) {
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
-      acceptNode: text => text.parentElement?.closest(EXCLUDED) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+      acceptNode: text => text.parentElement?.closest(EXCLUDED) || headingPermalink(text) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
     });
     const parts = []; while (walker.nextNode()) parts.push(walker.currentNode.nodeValue);
     return parts.join('').trim();

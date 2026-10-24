@@ -44,6 +44,31 @@ test('bilingual paragraphs preserve original DOM, links and controls; toggle is 
   }
 });
 
+test('heading permalink symbols are excluded without stripping meaningful hashes or changing original links', async ({ context, extensionId, page, request }) => {
+  await page.evaluate(() => {
+    const section = document.createElement('section'); section.id = 'heading-fixture';
+    section.innerHTML = '<h1 id="heading-ros">ROS 2<a class="headerlink" href="#heading-ros" title="Link to this heading">#</a></h1>' +
+      '<h2 id="heading-related">Related documentation<a class="headerlink" href="#heading-related"><span>¶</span></a></h2>' +
+      '<h3 id="heading-sensors">Sensor setup<a class="header-anchor" href="#heading-sensors">🔗</a></h3>' +
+      '<h4 id="heading-hashes">C# and #include <a class="headerlink" href="#reference">C# reference</a><a class="anchor-link" href="#heading-hashes">#</a></h4>' +
+      '<p id="paragraph-hash">Use the # marker <a class="headerlink" href="#reference">#</a>.</p>';
+    section.querySelector('a').addEventListener('click', event => { event.preventDefault(); section.dataset.linkClicked = 'yes'; });
+    document.querySelector('main').prepend(section);
+  });
+  const fixture = page.locator('#heading-fixture'), original = await fixture.innerHTML();
+  await toggle(context, extensionId, page);
+  for (const [id, source] of [
+    ['heading-ros', 'ROS 2'], ['heading-related', 'Related documentation'], ['heading-sensors', 'Sensor setup'],
+    ['heading-hashes', 'C# and #include C# reference'], ['paragraph-hash', 'Use the # marker #.']
+  ]) await expect(page.locator(`#${id} .tai-translation`)).toHaveText(`Translated: ${source}`);
+  await page.locator('#heading-ros a').click(); await expect(fixture).toHaveAttribute('data-link-clicked', 'yes');
+  await expect(page.locator('#heading-ros a')).toHaveAttribute('href', '#heading-ros');
+  const calls = await (await request.get(`${BASE}/requests`)).json();
+  expect(calls.some(call => call.text === 'ROS 2#' || call.text === 'Related documentation¶')).toBe(false);
+  await toggle(context, extensionId, page);
+  expect(await fixture.innerHTML()).toBe(original);
+});
+
 test('dynamic paragraphs and changed text are translated once', async ({ context, extensionId, page }) => {
   await toggle(context, extensionId, page);
   await page.evaluate(() => { const p = document.createElement('p'); p.id = 'dynamic'; p.textContent = 'A newly loaded paragraph.'; document.querySelector('main').append(p); });

@@ -18,7 +18,7 @@
 
 **사용 설명서:** [HTML 내려받아 열기](docs/USER-GUIDE.html) · [PDF 6쪽](output/pdf/Translate-AI-사용설명서.pdf). 설치·계정 연결, 원문과 번역 병기, Space 세 번, 복구, 모델 선택과 문제 해결을 담았습니다.
 
-**2026-10-24 복구 보완 및 연결 재검사:** 초점 이동을 입력 수정으로 오인해 원문 복구를 취소하는 문제를 고쳤습니다. 설치된 Chrome·Comet에서 실제 GPT-6 Luna 입력 번역, 초점 이동 후 원문 복구, 검색창 열림 유지와 복구 버튼 지속 표시(Chrome 34초·Comet 54초)를 확인했습니다. 같은 날 Comet의 NVIDIA 22/22 병기·페이지 원문 복원도 확인했습니다. 회귀 검사 26개와 수정 후 실제 계정의 NVIDIA 검색창 검사 1개가 통과했습니다. [현재 검사 결과](docs/CONNECTION-TEST-2026-10-24.md) · [복구 보완판 적용](docs/RESTORE-UPDATE-2026-10-24.md) · [10월 18일 검사 기록](docs/VERIFICATION-1.3.0.md)
+**2026-10-24 제목·복구 최종 보완판:** 제목의 바로가기 기호가 번역에 섞여 `ROS 2#`처럼 표시되던 문제를 고쳤습니다. 실제 내용인 `C#`·`#include`와 원래 링크는 보존합니다. 설치된 Chrome·Comet 양쪽에서 제목 수정, NVIDIA 22/22 병기, GPT-6 Luna Space 3회 입력 번역, 입력·페이지 원문 복구를 재검증했습니다. 입력 복구 버튼은 Chrome **81초**, Comet **68초** 유지 확인. 단위 21개·회귀 27개 통과. [최종 검사와 보완 ZIP 적용](docs/HEADING-UPDATE-2026-10-24.md) · [앞선 연결·복구 검사](docs/CONNECTION-TEST-2026-10-24.md) · [10월 18일 검사 기록](docs/VERIFICATION-1.3.0.md)
 
 **Windows 실행 파일 보완:** 시작 시 실행 중인 연결 프로그램의 버전을 검사합니다. 구버전이 남아 있으면 준비 완료로 표시하지 않습니다. **`Restart-Translate-AI.cmd`**는 PID 기록이 없어도 실제 연결 포트를 조회하고 이 프로젝트의 실행 경로를 확인한 뒤 재시작합니다. 버전·모델 선택 지원을 검사하고 결과 창을 유지합니다. 최초 v1.3.0 ZIP 사용자는 같은 릴리스의 **`Translate-AI-1.3.0-launcher-update-r2.zip`**을 기존 설치 폴더에 덮어 적용하세요. Git으로 업데이트한 폴더에는 포함돼 있습니다. [적용 방법](docs/LAUNCHER-UPDATE-1.3.0.md)
 
