@@ -1,7 +1,18 @@
 (() => {
-  if (globalThis.__translateAI) return;
-  globalThis.__translateAI = true;
-  let settings = { inputEnabled: true, spaceInterval: 300, pageLanguage: 'ko', inputLanguage: 'en' };
+  try {
+    if (globalThis.__translateAI?.alive?.()) return;
+    globalThis.__translateAI?.dispose?.();
+  } catch { /* replace stale isolated-world instance after extension reload */ }
+
+  const lifecycle = new AbortController();
+  const { signal } = lifecycle;
+
+  let settings = {
+    inputEnabled: true, spaceInterval: 300, pageConcurrency: 6,
+    pageLanguage: 'ko', inputLanguage: 'en',
+    pageHotkey: 'Alt+KeyA', inputHotkey: 'Alt+KeyI'
+  };
+
   async function rpc(message) {
     let response;
     try { response = await chrome.runtime.sendMessage(message); }
@@ -9,8 +20,41 @@
     if (!response?.ok) throw new Error(response?.error || '번역 요청에 실패했습니다.');
     return response.data;
   }
-  async function refreshSettings() { settings = await rpc({ type: 'TAI_SETTINGS' }); }
+  async function refreshSettings() { settings = { ...settings, ...await rpc({ type: 'TAI_SETTINGS' }) }; }
   void refreshSettings().catch(() => {});
+
+  function parseHotkeySpec(hotkey) {
+    if (typeof hotkey !== 'string' || !hotkey.trim()) return null;
+    const parts = hotkey.split('+').map(p => p.trim()).filter(Boolean);
+    const spec = { ctrl: false, alt: false, shift: false, meta: false, code: '' };
+    for (const part of parts) {
+      const lower = part.toLowerCase();
+      if (lower === 'ctrl' || lower === 'control') spec.ctrl = true;
+      else if (lower === 'alt' || lower === 'option') spec.alt = true;
+      else if (lower === 'shift') spec.shift = true;
+      else if (lower === 'meta' || lower === 'cmd' || lower === 'command') spec.meta = true;
+      else spec.code = part;
+    }
+    return spec.code ? spec : null;
+  }
+  function eventMatchesHotkey(event, hotkey) {
+    if (!hotkey || !event || event.repeat) return false;
+    const spec = parseHotkeySpec(hotkey);
+    if (!spec) return false;
+    if (Boolean(event.ctrlKey) !== spec.ctrl || Boolean(event.altKey) !== spec.alt || Boolean(event.shiftKey) !== spec.shift || Boolean(event.metaKey) !== spec.meta) {
+      return false;
+    }
+    if (event.code) return event.code === spec.code;
+    if (typeof event.key === 'string' && event.key.length === 1) {
+      if (/[a-z]/i.test(event.key)) return spec.code === `Key${event.key.toUpperCase()}`;
+      if (/[0-9]/.test(event.key)) return spec.code === `Digit${event.key}`;
+    }
+    return event.key === spec.code;
+  }
+  function formatModelLabel(model) {
+    if (typeof model !== 'string' || !model) return '';
+    return model.replace(/^gpt-/i, 'GPT-').replace(/-(sol|astra|terra|luna)$/i, (_, name) => ` ${name[0].toUpperCase()}${name.slice(1).toLowerCase()}`);
+  }
 
   // A shadow root keeps the status UI separate from the page's styles and text extraction.
   let toastHost, toastRoot, toastTimer, inputNoticeUntil = 0;
@@ -60,7 +104,7 @@
     }
     placeNotice();
   }
-  document.addEventListener('close', event => { if (event.target instanceof HTMLDialogElement) placeNotice(); }, true);
+  document.addEventListener('close', event => { if (event.target instanceof HTMLDialogElement) placeNotice(); }, { capture: true, signal });
 
   // Page translation retains the original nodes and their event handlers.
   const BLOCKS = 'p,h1,h2,h3,h4,h5,h6,li,blockquote,figcaption,td,th,dt,dd,[role="paragraph"]';
@@ -100,7 +144,8 @@
     entry.state = 'queued'; pageQueue.push(entry); pumpPage();
   }
   function pumpPage() {
-    while (pageEnabled && pageBusy < (settings.provider === 'codex' ? 12 : 3) && pageQueue.length) {
+    const limit = settings.provider === 'codex' ? 12 : (settings.pageConcurrency || 6);
+    while (pageEnabled && pageBusy < limit && pageQueue.length) {
       const entry = pageQueue.shift();
       if (!entry.node.isConnected || entries.get(entry.node) !== entry || entry.state !== 'queued') continue;
       pageBusy++; entry.state = 'loading'; const epoch = pageEpoch;
@@ -161,10 +206,13 @@
     mutationObserver.observe(document.body, { subtree: true, childList: true, characterData: true });
     scanPage();
   }
-  function stopPage() {
+  function stopPageSilent() {
     pageEnabled = false; pageEpoch++; clearTimeout(scanTimer); pageQueue.length = 0;
     mutationObserver?.disconnect(); intersectionObserver?.disconnect();
     for (const entry of entries.values()) entry.marker?.remove(); entries.clear();
+  }
+  function stopPage() {
+    stopPageSilent();
     notify('원문으로 돌아왔습니다.');
   }
 
@@ -233,6 +281,11 @@
       }
     };
   }
+  function deepActiveElement() {
+    let active = document.activeElement;
+    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+    return active;
+  }
   function editableRoot(target) {
     if (!(target instanceof Element)) return null;
     if (target instanceof HTMLInputElement) return ['text', 'search'].includes(target.type) && !target.readOnly && !target.disabled ? target : null;
@@ -273,12 +326,17 @@
   }
   const revisions = new WeakMap(), editRevisions = new WeakMap(), jobs = new WeakMap();
   let sequence = null, composing = false;
+  let lastToggleAt = -1000, lastToggleSource = '';
+  let lastInputAt = -1000, lastInputSource = '';
   function bump(el, edited = true) {
     if (!el) return;
     revisions.set(el, (revisions.get(el) || 0) + 1);
     if (edited) editRevisions.set(el, (editRevisions.get(el) || 0) + 1);
   }
-  function focused(el) { return el === document.activeElement || el.contains(document.activeElement); }
+  function focused(el) {
+    const active = deepActiveElement();
+    return el === active || Boolean(active && el.contains(active));
+  }
   async function translateInput(el, a) {
     if (!a || !settings.inputEnabled) return;
     const original = a.read(), caret = a.caret();
@@ -294,7 +352,7 @@
         notify('입력이 바뀌어 번역을 적용하지 않았습니다.'); return;
       }
       await a.set(result.text); const appliedEditRevision = editRevisions.get(el) || 0;
-      const modelLabel = result.provider === 'codex' && result.model ? ` · ${result.model.replace(/^gpt-/, 'GPT-').replace(/-(sol|luna)$/, (_, name) => ` ${name[0].toUpperCase()}${name.slice(1)}`)}` : '';
+      const modelLabel = result.provider === 'codex' && result.model ? ` · ${formatModelLabel(result.model)}` : '';
       notify(`입력창을 번역했습니다.${modelLabel}`, { label: '원문 복구', run: async () => {
         // Focus can move to the restore button or another tab without editing.
         // Keep edit history protection even if text was changed and changed back.
@@ -304,14 +362,51 @@
       } });
     } catch (error) { if (jobs.get(el) === job) notify(error.message); }
   }
-  document.addEventListener('compositionstart', () => { composing = true; sequence = null; }, true);
-  document.addEventListener('compositionend', event => { composing = false; sequence = null; bump(editableRoot(event.target)); }, true);
-  document.addEventListener('input', event => { bump(editableRoot(event.composedPath()[0])); }, true);
-  document.addEventListener('beforeinput', event => { bump(editableRoot(event.composedPath()[0])); }, true);
-  document.addEventListener('focusout', event => { sequence = null; bump(editableRoot(event.target), false); }, true);
-  document.addEventListener('pointerdown', () => { sequence = null; }, true);
-  document.addEventListener('focusin', () => { placeNotice(); void refreshSettings().catch(() => {}); }, true);
+
+  function runInputHotkey(fromShortcut = false, source = 'keydown') {
+    const now = performance.now();
+    if (source !== lastInputSource && now - lastInputAt < 180) return;
+    lastInputAt = now; lastInputSource = source;
+    composing = false; sequence = null;
+    if (!settings.inputEnabled) {
+      if (fromShortcut) notify('입력창 번역이 꺼져 있습니다. 설정에서 활성화하세요.');
+      return;
+    }
+    const el = editableRoot(deepActiveElement()), a = adapter(el);
+    if (el && !a) notify('이 편집기는 서식 보존을 위해 아직 지원하지 않습니다.');
+    else if (!el && fromShortcut && window === window.top) notify('번역할 입력창을 먼저 클릭하세요.');
+    else if (el && a) void translateInput(el, a);
+  }
+
+  function runToggleHotkey(source = 'keydown') {
+    const now = performance.now();
+    if (source !== lastToggleSource && now - lastToggleAt < 180) return Promise.resolve({ ok: true });
+    lastToggleAt = now; lastToggleSource = source;
+    if (window !== window.top) {
+      return rpc({ type: 'TAI_TRIGGER_TOGGLE_PAGE' }).then(() => ({ ok: true }), e => ({ ok: false, error: e.message }));
+    }
+    if (pageEnabled) { stopPage(); return Promise.resolve({ ok: true }); }
+    return startPage().then(() => ({ ok: true }), e => { notify(e.message); return { ok: false, error: e.message }; });
+  }
+
+  document.addEventListener('compositionstart', () => { composing = true; sequence = null; }, { capture: true, signal });
+  document.addEventListener('compositionend', event => { composing = false; sequence = null; bump(editableRoot(event.target)); }, { capture: true, signal });
+  document.addEventListener('input', event => { bump(editableRoot(event.composedPath()[0])); }, { capture: true, signal });
+  document.addEventListener('beforeinput', event => { bump(editableRoot(event.composedPath()[0])); }, { capture: true, signal });
+  document.addEventListener('focusout', event => { sequence = null; bump(editableRoot(event.target), false); }, { capture: true, signal });
+  document.addEventListener('pointerdown', () => { sequence = null; }, { capture: true, signal });
+  document.addEventListener('focusin', () => { placeNotice(); void refreshSettings().catch(() => {}); }, { capture: true, signal });
   document.addEventListener('keydown', event => {
+    if (eventMatchesHotkey(event, settings.pageHotkey)) {
+      event.preventDefault(); event.stopPropagation();
+      void runToggleHotkey();
+      return;
+    }
+    if (eventMatchesHotkey(event, settings.inputHotkey)) {
+      event.preventDefault(); event.stopPropagation();
+      runInputHotkey(true);
+      return;
+    }
     if (event.key !== ' ' || event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || event.isComposing || composing || event.keyCode === 229 || !settings.inputEnabled) { sequence = null; return; }
     const el = editableRoot(event.composedPath()[0]); const a = adapter(el);
     if (!a || !focused(el)) { sequence = null; return; }
@@ -333,20 +428,38 @@
     } else {
       sequence.expected = value.slice(0, caret) + ' ' + value.slice(caret); sequence.caret = caret + 1;
     }
-  }, true);
-  chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (sender.id !== chrome.runtime.id) return false;
+  }, { capture: true, signal });
+
+  function onRuntimeMessage(message, sender, respond) {
+    if (!chrome.runtime?.id || sender.id !== chrome.runtime.id) return false;
+    if (message.type === 'TAI_SETTINGS_UPDATED' && message.settings) {
+      settings = { ...settings, ...message.settings };
+      return false;
+    }
     if (message.type === 'TAI_PAGE_STATUS') { respond(pageStatus()); return false; }
     if (message.type === 'TAI_TOGGLE_PAGE') {
+      if (message.fromCommand) {
+        runToggleHotkey('command').then(respond);
+        return true;
+      }
       if (pageEnabled) { stopPage(); respond({ ok: true }); }
       else startPage().then(() => respond({ ok: true }), e => { notify(e.message); respond({ ok: false, error: e.message }); });
       return true;
     }
     if (message.type === 'TAI_INPUT_NOW' && document.hasFocus()) {
-      const el = editableRoot(document.activeElement), a = adapter(el);
-      if (el && !a) notify('이 편집기는 서식 보존을 위해 아직 지원하지 않습니다.');
-      else void translateInput(el, a);
+      runInputHotkey(true, 'command');
     }
     return false;
-  });
+  }
+  chrome.runtime.onMessage.addListener(onRuntimeMessage);
+
+  globalThis.__translateAI = {
+    alive: () => Boolean(chrome.runtime?.id),
+    dispose: () => {
+      lifecycle.abort();
+      try { chrome.runtime?.onMessage?.removeListener(onRuntimeMessage); } catch { /* context already invalidated */ }
+      stopPageSilent();
+      dismissNotice();
+    }
+  };
 })();

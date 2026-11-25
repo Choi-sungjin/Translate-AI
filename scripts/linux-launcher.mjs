@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { chmod, mkdir, open, readFile, readdir, readlink, realpath, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, open, readFile, readdir, readlink, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -110,6 +110,9 @@ async function stop() {
 }
 function shellQuote(value) { return "'" + value.replaceAll("'", "'\\''") + "'"; }
 function desktopQuote(value) { return '"' + value.replaceAll('\\', '\\\\\\\\').replaceAll('"', '\\\\"').replaceAll('`', '\\\\`').replaceAll('$', '\\\\$').replaceAll('%', '%%') + '"'; }
+function autostartFile() {
+  return path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'autostart/translate-ai.desktop');
+}
 async function install() {
   await ensureDependencies();
   const bin = path.join(os.homedir(), '.local/bin');
@@ -121,15 +124,26 @@ async function install() {
   await chmod(launcher, 0o755);
   const exec = desktopQuote(launcher);
   await writeFile(path.join(applications, 'translate-ai.desktop'), `[Desktop Entry]\nType=Application\nName=Translate AI\nComment=Webpage and input translation\nExec=${exec} start\nIcon=accessories-dictionary\nTerminal=false\nCategories=Utility;\nActions=Restart;Stop;\n\n[Desktop Action Restart]\nName=Restart Translate AI\nExec=${exec} restart\n\n[Desktop Action Stop]\nName=Stop Translate AI\nExec=${exec} stop\n`);
+  // Start the bridge quietly at every desktop login so translations do not fail after a reboot.
+  const autostart = autostartFile();
+  if (options.includes('--no-autostart')) {
+    await rm(autostart, { force: true });
+    console.log('Login autostart is off.');
+  } else {
+    await mkdir(path.dirname(autostart), { recursive: true });
+    await writeFile(autostart, `[Desktop Entry]\nType=Application\nName=Translate AI\nComment=Start the Translate AI local bridge\nExec=${exec} start --no-open\nIcon=accessories-dictionary\nTerminal=false\nNoDisplay=true\nX-GNOME-Autostart-enabled=true\n`);
+    console.log('Login autostart is on. Run Install-Translate-AI.sh --no-autostart to turn it off.');
+  }
   console.log('Installed Translate AI in the application menu. Keep this installation folder in place.');
   console.log(`Extension folder: ${path.join(root, 'extension')}`);
 }
 try {
   if (process.platform !== 'linux' || Number(process.versions.node.split('.')[0]) < 22) throw new Error('Linux and Node.js 22 or newer are required.');
-  if (options.some(option => option !== '--no-open')) throw new Error('Unknown option. Supported: --no-open');
+  const allowed = action === 'install' ? ['--no-open', '--no-autostart'] : ['--no-open'];
+  if (options.some(option => !allowed.includes(option))) throw new Error(`Unknown option. Supported: ${allowed.join(' ')}`);
   if (action === 'install') await install();
   else if (action === 'start') await start();
   else if (action === 'stop') await stop();
   else if (action === 'restart') { await stop(); await start(); }
-  else throw new Error('Usage: bridge-linux.sh start|stop|restart|install [--no-open]');
+  else throw new Error('Usage: bridge-linux.sh start|stop|restart [--no-open] | install [--no-autostart]');
 } catch (error) { console.error(error.message); process.exitCode = 1; }

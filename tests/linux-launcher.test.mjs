@@ -28,7 +28,7 @@ test('Linux launcher: real lifecycle, spaces, foreign ports, busy bridge and men
   const project = path.join(temp, 'installation with spaces'); await mkdir(project);
   for (const name of ['extension', 'bridge', 'scripts', 'package.json', 'package-lock.json', 'Start-Translate-AI.sh', 'Stop-Translate-AI.sh', 'Restart-Translate-AI.sh', 'Install-Translate-AI.sh']) await cp(path.join(root, name), path.join(project, name), { recursive: true });
   await symlink(path.join(root, 'node_modules'), path.join(project, 'node_modules'));
-  const env = { ...process.env, HOME: path.join(temp, 'home'), XDG_DATA_HOME: path.join(temp, 'data') };
+  const env = { ...process.env, HOME: path.join(temp, 'home'), XDG_DATA_HOME: path.join(temp, 'data'), XDG_CONFIG_HOME: path.join(temp, 'config') };
   const launch = script => run(script, env, project);
   t.after(async () => { await launch('Stop-Translate-AI.sh'); await rm(temp, { recursive: true, force: true }); });
   for (const script of ['Start-Translate-AI.sh', 'Start-Translate-AI.sh', 'Restart-Translate-AI.sh']) {
@@ -62,6 +62,20 @@ test('Linux launcher: real lifecycle, spaces, foreign ports, busy bridge and men
   const installed = await launch('Install-Translate-AI.sh'); assert.equal(installed.code, 0, installed.output);
   assert.match(await readFile(path.join(env.XDG_DATA_HOME, 'applications/translate-ai.desktop'), 'utf8'), /Desktop Action Stop/);
   assert.match(await readFile(path.join(env.HOME, '.local/bin/translate-ai'), 'utf8'), /installation with spaces/);
+  const autostart = path.join(env.XDG_CONFIG_HOME, 'autostart/translate-ai.desktop');
+  const entry = await readFile(autostart, 'utf8');
+  assert.match(entry, /^Exec=".*translate-ai" start --no-open$/m, 'login start must not open a browser');
+  assert.match(entry, /X-GNOME-Autostart-enabled=true/);
+  const runArgs = (script, args) => new Promise((resolve, reject) => {
+    const child = spawn('sh', [path.join(project, script), ...args], { cwd: '/', env });
+    let output = ''; child.stdout.on('data', d => output += d); child.stderr.on('data', d => output += d);
+    child.on('error', reject); child.on('close', code => resolve({ code, output }));
+  });
+  const wrongCommand = await runArgs('Start-Translate-AI.sh', ['--no-autostart']);
+  assert.notEqual(wrongCommand.code, 0); assert.match(wrongCommand.output, /Unknown option/);
+  const off = await runArgs('Install-Translate-AI.sh', ['--no-autostart']);
+  assert.equal(off.code, 0, off.output); assert.match(off.output, /autostart is off/);
+  await assert.rejects(stat(autostart), { code: 'ENOENT' });
   assert.equal(await readFile(stateFile, 'utf8'), state, 'connection code must survive restart and install');
   // Exercise the production signal handler twice while an admitted request is
   // still arriving. Repeated stop attempts must not force-kill the connection.

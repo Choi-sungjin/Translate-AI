@@ -331,3 +331,156 @@ test('invalid ChatGPT pairing code preserves input and never falls back to anoth
   await expect(page.locator('#translate-ai-status')).toContainText('연결 코드가 다릅니다'); await expect(input).toHaveValue('잘못된 연결 코드 시험');
   expect((await (await request.get(`${BASE}/requests`)).json()).some(r => r.text === '잘못된 연결 코드 시험')).toBe(false);
 });
+
+test('OpenAI API: model, speed and reasoning settings persist and shape the real request', async ({ context, extensionId, request }) => {
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator('#model-suggestions option[value="gpt-6.2-sol"]')).toHaveCount(1);
+  await options.locator('#model').fill('gpt-6.2-sol');
+  await options.locator('#serviceTier').selectOption('fast');
+  await options.locator('#reasoningEffort').selectOption('auto');
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('저장했습니다');
+  await options.reload();
+  await expect(options.locator('#model')).toHaveValue('gpt-6.2-sol');
+  await expect(options.locator('#serviceTier')).toHaveValue('fast');
+  await expect(options.locator('#reasoningEffort')).toHaveValue('auto');
+  await options.getByRole('button', { name: '저장한 설정으로 연결 확인' }).click();
+  await expect(options.locator('#status')).toContainText('연결 성공 · gpt-6.2-sol · 요청 속도 fast');
+  const sent = (await (await request.get(`${BASE}/requests`)).json()).filter(r => r.model === 'gpt-6.2-sol').at(-1);
+  expect(sent.format).toBe('chat');
+  expect(sent.body.service_tier).toBe('fast');
+  expect(sent.body.reasoning_effort).toBe('low');
+  expect(sent.body).not.toHaveProperty('temperature');
+  // A second test click must reach the server again instead of answering from cache.
+  const before = (await (await request.get(`${BASE}/requests`)).json()).length;
+  await options.getByRole('button', { name: '저장한 설정으로 연결 확인' }).click();
+  await expect.poll(async () => (await (await request.get(`${BASE}/requests`)).json()).length).toBe(before + 1);
+  await options.close();
+});
+
+test('OpenAI API: Ultrafast requires the Responses API and sends service_tier ultrafast', async ({ context, extensionId, request }) => {
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#model').fill('gpt-6.2-sol');
+  await options.locator('#serviceTier').selectOption('ultrafast');
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('Responses');
+  // The official chat URL is switched automatically.
+  await options.locator('#serviceTier').selectOption('');
+  await options.getByRole('button', { name: 'OpenAI 공식 주소로 채우기' }).click();
+  await expect(options.locator('#apiUrl')).toHaveValue('https://api.openai.com/v1/chat/completions');
+  await options.locator('#serviceTier').selectOption('ultrafast');
+  await expect(options.locator('#apiUrl')).toHaveValue('https://api.openai.com/v1/responses');
+  await expect(options.locator('#status')).toContainText('Responses API');
+  // Exercise a real Responses round trip against the local mock.
+  await options.locator('#apiUrl').fill(`${BASE}/api/responses`);
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('저장했습니다');
+  await options.getByRole('button', { name: '저장한 설정으로 연결 확인' }).click();
+  await expect(options.locator('#status')).toContainText('요청 속도 ultrafast');
+  await expect(options.locator('#status')).toContainText('Responses: ');
+  const sent = (await (await request.get(`${BASE}/requests`)).json()).filter(r => r.format === 'responses').at(-1);
+  expect(sent.body).toMatchObject({ model: 'gpt-6.2-sol', service_tier: 'ultrafast', store: false, reasoning: { effort: 'low' } });
+  expect(sent.body.input[0].role).toBe('developer');
+  expect(sent.body).not.toHaveProperty('temperature');
+  await options.close();
+});
+
+test('OpenAI API: rejection keeps the input, hides server text from web pages, and explains it on the settings page', async ({ context, extensionId, page }) => {
+  const original = 'fail-400 check'; const input = await typeInput(page, '#text', original); await triple(page);
+  const notice = page.locator('#translate-ai-status');
+  await expect(notice).toContainText('요청을 거절했습니다 (400)');
+  await expect(notice).not.toContainText('Unsupported parameter');
+  await expect(notice).not.toContainText('synthetic-test-key');
+  await expect(input).toHaveValue(original);
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#model').fill('reject-model');
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click(); await expect(options.locator('#status')).toContainText('저장했습니다');
+  await options.getByRole('button', { name: '저장한 설정으로 연결 확인' }).click();
+  await expect(options.locator('#status')).toContainText("서버 응답: Unsupported parameter: 'temperature'");
+  await expect(options.locator('#status')).toContainText('key=[가림]');
+  await expect(options.locator('#status')).not.toContainText('synthetic-test-key');
+  await options.close();
+});
+
+test('Codex GPT-6.2 Sol and speed/reasoning settings work from options and popup', async ({ context, extensionId, page, request }) => {
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await options.locator('#provider').selectOption('codex');
+  await options.locator('#bridgeToken').fill('b'.repeat(64));
+  await options.locator('#codexModel').selectOption('gpt-6.2-sol');
+  await options.locator('#codexServiceTier').selectOption('ultrafast');
+  await options.locator('#codexReasoningEffort').selectOption('low');
+  // Test button auto-saves dirty form changes before running live connection test.
+  await options.getByRole('button', { name: '저장한 설정으로 연결 확인' }).click();
+  await expect(options.locator('#status')).toContainText('연결 성공 · GPT-6.2 Sol');
+  await expect(options.locator('#status')).toContainText('속도 ultrafast');
+  await options.close();
+
+  const popup = await context.newPage(); await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popup.locator('#codexModel')).toHaveValue('gpt-6.2-sol');
+  await expect(popup.locator('#codexServiceTier')).toHaveValue('ultrafast');
+  await popup.locator('#codexServiceTier').selectOption('fast');
+  await expect(popup.locator('#status')).toContainText('속도');
+  await popup.close();
+
+  await page.bringToFront();
+  const input = await typeInput(page, '#text', '최신 모델 속도 확인'); await triple(page);
+  await expect(input).toHaveValue('Login translated: 최신 모델 속도 확인');
+  await expect(page.locator('#translate-ai-status')).toContainText('GPT-6.2 Sol');
+  const sent = (await (await request.get(`${BASE}/requests`)).json()).filter(r => r.provider === 'codex' && r.text === '최신 모델 속도 확인').at(-1);
+  expect(sent).toMatchObject({ model: 'gpt-6.2-sol', serviceTier: 'fast', reasoningEffort: 'low' });
+});
+
+test('hotkeys: default Alt+A/Alt+I work, custom hotkeys record in options, update popup, and fire live on open tabs', async ({ context, extensionId, page }) => {
+  await page.bringToFront();
+  // Wait for content script readiness
+  const input = await typeInput(page, '#text', '단축키 기본 테스트');
+  // Default Alt+I translates focused input immediately
+  await page.keyboard.press('Alt+KeyI');
+  await expect(input).toHaveValue('Translated: 단축키 기본 테스트');
+  await page.getByRole('button', { name: '원문 복구', exact: true }).click();
+  await expect(input).toHaveValue('단축키 기본 테스트');
+
+  // Default Alt+A toggles page translation on and off
+  await page.keyboard.press('Alt+KeyA');
+  await expect(page.locator('#article .tai-translation')).toContainText('Translated:');
+  await page.keyboard.press('Alt+KeyA');
+  await expect(page.locator('.tai-translation')).toHaveCount(0);
+
+  // Customize hotkeys in Options using interactive key recorder
+  const options = await context.newPage(); await options.goto(`chrome-extension://${extensionId}/options.html`);
+  await expect(options.locator('#pageHotkeyDisplay')).toHaveValue('Alt + A');
+  await expect(options.locator('#inputHotkeyDisplay')).toHaveValue('Alt + I');
+
+  await options.locator('#pageHotkeyDisplay').focus();
+  await options.keyboard.press('Control+Shift+KeyY');
+  await expect(options.locator('#pageHotkeyDisplay')).toHaveValue('Ctrl + Shift + Y');
+
+  // Duplicate shortcut must be rejected on save
+  await options.locator('#inputHotkeyDisplay').focus();
+  await options.keyboard.press('Control+Shift+KeyY');
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click();
+  await expect(options.locator('#status')).toContainText('서로 다르게');
+
+  // Record distinct input shortcut
+  await options.locator('#inputHotkeyDisplay').focus();
+  await options.keyboard.press('Alt+Shift+KeyK');
+  await expect(options.locator('#inputHotkeyDisplay')).toHaveValue('Alt + Shift + K');
+  await options.getByRole('button', { name: '설정 저장', exact: true }).click();
+  await expect(options.locator('#status')).toContainText('저장했습니다');
+  await options.close();
+
+  // Popup dynamically displays custom hotkeys
+  const popup = await context.newPage(); await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popup.locator('#page-hotkey-badge')).toHaveText('Ctrl + Shift + Y');
+  await expect(popup.locator('#input-hotkey-badge')).toHaveText('Alt + Shift + K');
+  await popup.close();
+
+  // Already-open tab immediately responds to new custom hotkeys without page reload
+  await page.bringToFront();
+  await page.keyboard.press('Control+Shift+KeyY');
+  await expect(page.locator('#article .tai-translation')).toContainText('Translated:');
+  await page.keyboard.press('Control+Shift+KeyY');
+  await expect(page.locator('.tai-translation')).toHaveCount(0);
+
+  await input.fill('커스텀 단축키 입력 번역');
+  await input.focus();
+  await page.keyboard.press('Alt+Shift+KeyK');
+  await expect(input).toHaveValue('Translated: 커스텀 단축키 입력 번역');
+});

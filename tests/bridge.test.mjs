@@ -61,7 +61,7 @@ test('authenticated extension can check login and translate only validated text'
   assert.equal((await status.json()).loggedIn, true);
   const response = await fetch(`${url}/v1/translate`, { method: 'POST', headers, body: JSON.stringify({ text: 'Hello', target: 'ko', mode: 'input', command: 'ignored' }) });
   assert.equal((await response.json()).text, '번역 결과');
-  assert.deepEqual(requests, [{ text: 'Hello', target: 'ko', model: 'gpt-6.1-sol' }]);
+  assert.deepEqual(requests, [{ text: 'Hello', target: 'ko', model: 'gpt-6.2-sol' }]);
 });
 test('bridge refuses malformed, oversized and unsupported requests', async t => {
   const { url, headers, requests } = await fixture(t);
@@ -85,31 +85,42 @@ test('translation launches with explicit isolation and no arbitrary shell comman
   assert.ok(!args.includes('--dangerously-bypass-approvals-and-sandbox'));
 });
 
-test('legacy settings retain Sol; selected model reaches CLI as an allowlisted argument', () => {
-  assert.equal(validateSettings({}).codexModel, 'gpt-6.1-sol');
-  for (const model of ['gpt-6.1-sol', 'gpt-6-luna', 'gpt-5.6-luna']) {
+test('default settings use GPT-6.2 Sol; selected model, speed tier and effort reach CLI safely', () => {
+  assert.equal(validateSettings({}).codexModel, 'gpt-6.2-sol');
+  for (const model of ['gpt-6.2-sol', 'gpt-6.2-astra', 'gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6-luna', 'gpt-5.6-luna']) {
     assert.equal(validateSettings({ codexModel: model }).codexModel, model);
-    const args = translationArgs(true, model);
+    const args = translationArgs(true, model, { serviceTier: 'ultrafast', reasoningEffort: 'medium' });
     assert.equal(args[args.indexOf('--model') + 1], model);
-    assert.ok(args.includes('model_reasoning_effort="low"'));
+    assert.ok(args.includes('model_reasoning_effort="medium"'));
+    assert.ok(args.includes('service_tier="ultrafast"'));
   }
+  const defaultArgs = translationArgs(false, 'gpt-6.2-sol');
+  assert.ok(!defaultArgs.some(a => a.startsWith('service_tier=')));
   for (const model of [null, {}, '--config=unsafe', 'gpt-unknown']) {
     assert.throws(() => translationArgs(false, model));
     assert.throws(() => validateSettings({ codexModel: model }));
   }
+  assert.throws(() => translationArgs(false, 'gpt-6.2-sol', { serviceTier: 'invalid' }));
+  assert.throws(() => translationArgs(false, 'gpt-6.2-sol', { reasoningEffort: 'invalid' }));
 });
 
-test('bridge advertises selection support and reports the model used by both routes', async t => {
+test('bridge advertises model & speed selection support and reports settings used by both routes', async t => {
   const { url, headers, requests } = await fixture(t);
   assert.equal((await fetch(`${url}/v1/capabilities`)).status, 401);
-  assert.ok((await (await fetch(`${url}/v1/capabilities`, { headers })).json()).models.includes('gpt-6-luna'));
+  const caps = await (await fetch(`${url}/v1/capabilities`, { headers })).json();
+  assert.ok(caps.models.includes('gpt-6.2-sol') && caps.models.includes('gpt-6-luna'));
+  assert.equal(caps.speedSelection, true);
+  assert.deepEqual(caps.serviceTiers, ['', 'fast', 'ultrafast']);
   for (const batch of [false, true]) {
     const response = await fetch(`${url}/v1/${batch ? 'translate-batch' : 'translate'}`, {
-      method: 'POST', headers, body: JSON.stringify({ ...(batch ? { texts: ['first', 'second'] } : { text: 'first' }), target: 'ko', mode: batch ? 'page' : 'input', model: 'gpt-6-luna' })
+      method: 'POST', headers, body: JSON.stringify({ ...(batch ? { texts: ['first', 'second'] } : { text: 'first' }), target: 'ko', mode: batch ? 'page' : 'input', model: 'gpt-6.2-sol', serviceTier: 'fast', reasoningEffort: 'medium' })
     });
-    const result = await response.json(); assert.equal(result.model, 'gpt-6-luna'); assert.equal(result.reasoningEffort, 'low');
+    const result = await response.json();
+    assert.equal(result.model, 'gpt-6.2-sol');
+    assert.equal(result.serviceTier, 'fast');
+    assert.equal(result.reasoningEffort, 'medium');
   }
-  assert.ok(requests.every(r => r.model === 'gpt-6-luna'));
+  assert.ok(requests.every(r => r.model === 'gpt-6.2-sol' && r.serviceTier === 'fast' && r.reasoningEffort === 'medium'));
   const response = await fetch(`${url}/v1/translate`, { method: 'POST', headers, body: JSON.stringify({ text: 'valid', target: 'ko', mode: 'input', model: 'gpt-unknown' }) });
   assert.equal(response.status, 400); assert.equal(requests.length, 2);
 });

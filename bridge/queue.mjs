@@ -17,23 +17,36 @@ export function createTranslationQueue({ translate, translateBatch, cwd, batchDe
     Promise.resolve().then(() => translate(job.data, cwd)).then(job.resolve, job.reject)
       .finally(() => { inputActive = false; pumpInput(); });
   }
+  function sameConfig(a, b) {
+    return a.target === b.target
+      && a.model === b.model
+      && (a.serviceTier || '') === (b.serviceTier || '')
+      && (a.reasoningEffort || 'low') === (b.reasoningEffort || 'low');
+  }
   function pumpPage() {
     timer = undefined;
     if (pageActive) return;
     const first = take(pages); if (!first) return;
     const batch = [first]; let chars = first.data.text.length;
-    // Keep language boundaries and bound both output size and time to first result.
+    // Keep language/model/speed boundaries and bound both output size and time to first result.
     for (let i = 0; i < pages.length && batch.length < 12;) {
       const job = pages[i];
       if (job.cancelled()) { pages.splice(i, 1); job.reject(new Error('취소된 요청입니다.')); continue; }
-      if (job.data.target === first.data.target && job.data.model === first.data.model && chars + job.data.text.length <= 12000) {
+      if (sameConfig(job.data, first.data) && chars + job.data.text.length <= 12000) {
         pages.splice(i, 1); batch.push(job); chars += job.data.text.length;
       } else i++;
     }
     pageActive = true;
     Promise.resolve().then(async () => {
+      const batchPayload = {
+        texts: batch.map(j => j.data.text),
+        target: first.data.target,
+        model: first.data.model,
+        ...(first.data.serviceTier ? { serviceTier: first.data.serviceTier } : {}),
+        ...(first.data.reasoningEffort && first.data.reasoningEffort !== 'low' ? { reasoningEffort: first.data.reasoningEffort } : {})
+      };
       const results = batch.length === 1 ? [await translate(first.data, cwd)]
-        : await translateBatch({ texts: batch.map(j => j.data.text), target: first.data.target, model: first.data.model }, cwd);
+        : await translateBatch(batchPayload, cwd);
       if (!Array.isArray(results) || results.length !== batch.length || results.some(t => typeof t !== 'string' || !t.trim() || t.length > 60000)) {
         throw new Error('묶음 번역 결과가 올바르지 않습니다. 원문은 유지됩니다.');
       }

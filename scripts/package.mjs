@@ -7,7 +7,7 @@ const root = process.cwd(), output = path.join(root, 'dist');
 await mkdir(output, { recursive: true });
 const manifest = JSON.parse(await readFile('extension/manifest.json', 'utf8'));
 if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) throw new Error('Invalid package version');
-const tracked = spawnSync('git', ['ls-files', '-z'], { encoding: 'utf8' });
+const tracked = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { encoding: 'utf8' });
 if (tracked.status !== 0) throw new Error('Run packaging from the Git source checkout.');
 const files = tracked.stdout.split('\0').filter(Boolean);
 const common = files.filter(f => /^(extension|bridge|docs)\//.test(f) || ['README.md', 'package.json', 'package-lock.json'].includes(f));

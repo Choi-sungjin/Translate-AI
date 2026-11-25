@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Translate AI — 원문과 함께",
-  "version": "1.4.0",
-  "description": "웹페이지 원문·번역 병기와 스페이스바 3회 입력 번역. 내 ChatGPT 계정 로그인, 무료 번역, 개인 AI API를 선택하세요.",
+  "version": "1.5.0",
+  "description": "웹페이지 원문·번역 병기와 스페이스바 3회·단축키 입력 번역. 내 ChatGPT 계정 로그인, 무료 번역, 개인 AI API를 선택하세요.",
   "minimum_chrome_version": "120",
-  "permissions": ["storage", "activeTab", "contextMenus"],
+  "permissions": ["storage", "activeTab", "contextMenus", "scripting"],
   "host_permissions": ["https://*/*", "http://*/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [{

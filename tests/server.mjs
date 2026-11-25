@@ -16,16 +16,39 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/chat/completions') {
     let body = ''; for await (const chunk of req) body += chunk;
     const data = JSON.parse(body), text = data.messages?.at(-1)?.content || '';
-    requests.push({ text, model: data.model, authorization: req.headers.authorization || null });
+    requests.push({ text, model: data.model, authorization: req.headers.authorization || null, format: 'chat', body: data });
     if (text.includes('slow')) await new Promise(r => setTimeout(r, 1000));
     if (text.includes('fail-api')) { res.writeHead(401); res.end('{}'); return; }
+    if (text.includes('fail-400') || data.model === 'reject-model') { res.writeHead(400, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: { message: `Unsupported parameter: 'temperature' is not supported with this model. key=${(req.headers.authorization || '').replace('Bearer ', '')}` } })); return; }
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ choices: [{ message: { content: `Translated: ${text}` } }] })); return;
+    res.end(JSON.stringify({ service_tier: data.service_tier || 'default', choices: [{ message: { content: `Translated: ${text}` } }] })); return;
+  }
+  if (url.pathname === '/api/responses') {
+    let body = ''; for await (const chunk of req) body += chunk;
+    const data = JSON.parse(body), text = data.input?.at(-1)?.content || '';
+    requests.push({ text, model: data.model, authorization: req.headers.authorization || null, format: 'responses', body: data });
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ service_tier: data.service_tier || 'default', status: 'completed', output: [
+      { type: 'reasoning', summary: [] },
+      { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: `Responses: ${text}` }] }
+    ] })); return;
   }
   res.setHeader('content-type', 'text/html; charset=utf-8'); res.end(html);
 });
 server.listen(18457, '127.0.0.1');
 if (process.env.TRANSLATE_AI_LIVE_LOGIN !== '1') {
-  const bridge = createBridge({ token: 'b'.repeat(64), cwd: '.', status: async () => ({ loggedIn: true, method: 'ChatGPT', message: 'ChatGPT 계정 로그인 연결됨 (테스트)' }), translate: async ({ text, model }) => { requests.push({ provider: 'codex', text, model }); return `Login translated: ${text}`; }, translateBatch: async ({ texts, model }) => { requests.push(...texts.map(text => ({ provider: 'codex', text, model }))); return texts.map(text => `Login translated: ${text}`); } });
+  const bridge = createBridge({
+    token: 'b'.repeat(64),
+    cwd: '.',
+    status: async () => ({ loggedIn: true, method: 'ChatGPT', message: 'ChatGPT 계정 로그인 연결됨 (테스트)' }),
+    translate: async ({ text, model, serviceTier, reasoningEffort }) => {
+      requests.push({ provider: 'codex', text, model, serviceTier: serviceTier || 'default', reasoningEffort: reasoningEffort || 'low' });
+      return `Login translated: ${text}`;
+    },
+    translateBatch: async ({ texts, model, serviceTier, reasoningEffort }) => {
+      requests.push(...texts.map(text => ({ provider: 'codex', text, model, serviceTier: serviceTier || 'default', reasoningEffort: reasoningEffort || 'low' })));
+      return texts.map(text => `Login translated: ${text}`);
+    }
+  });
   bridge.listen(Number(process.env.TRANSLATE_AI_TEST_BRIDGE_PORT || 18459), '127.0.0.1');
 }

@@ -2,13 +2,18 @@
 
 웹페이지는 **원문과 한국어를 함께**, 입력한 문장은 **스페이스바 3회로 바로 번역**하는 Chrome/Edge Manifest V3 확장 프로그램입니다.
 
-**v1.4.0 — Windows / Linux 선택 다운로드**
+**v1.5.0 — 최신 모델(GPT-6.2 Sol·Astra 등), 속도(Fast/Ultrafast·병렬 처리), 사용자 지정 단축키 지원**
 
 | 운영체제 | 다운로드 | 시작 |
 |---|---|---|
-| Windows | [Windows ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.4.0/Translate-AI-1.4.0-windows.zip) | `Start-Translate-AI.cmd` |
-| Linux | [Linux ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.4.0/Translate-AI-1.4.0-linux.zip) | `sh Start-Translate-AI.sh` |
-| 확장만 · 공용 | [확장 ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.4.0/Translate-AI-1.4.0-extension.zip) | 브라우저에서 압축해제된 확장 로드 |
+| Windows | [Windows ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.5.0/Translate-AI-1.5.0-windows.zip) | `Start-Translate-AI.cmd` |
+| Linux | [Linux ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.5.0/Translate-AI-1.5.0-linux.zip) | `sh Start-Translate-AI.sh` |
+| 확장만 · 공용 | [확장 ZIP](https://github.com/Choi-sungjin/Translate-AI/releases/download/v1.5.0/Translate-AI-1.5.0-extension.zip) | 브라우저에서 압축해제된 확장 로드 |
+
+**v1.5.0 주요 변경:**
+- **최신 모델 업데이트:** ChatGPT 로그인 연결(Codex CLI 0.172+)과 개인 AI API 모두에서 **GPT-6.2 Sol**(기본 추천), **GPT-6.2 Astra**, **GPT-6.1 Sol / Terra**, **GPT-6 Astra / Sol / Luna**, **GPT-5.6 Sol / Terra / Luna**를 지원합니다.
+- **번역 속도 및 추론 제어:** ChatGPT 연결과 개인 AI API 양쪽에서 **Standard / Fast / Ultrafast** 속도 단계(Service Tier), 추론 강도(`low`/`medium`/`high`), 웹페이지 동시 번역 문단 수(`1/3/6/12`)를 설정할 수 있습니다.
+- **사용자 지정 단축키:** 확장 설정에서 페이지 번역 켜기/끄기(기본 `Alt+A`)와 현재 입력창 즉시 번역(기본 `Alt+I`) 단축키를 원하는 키 조합으로 직접 녹화·해제할 수 있으며, 한/영 입력 상태와 무관하게 열려 있는 탭에 즉시 반영됩니다.
 
 두 운영체제 모두 **Node.js 22 이상과 npm**, Chrome/Edge 계열 브라우저가 필요합니다. ZIP에 Node.js나 로그인 정보는 포함하지 않습니다. 첫 시작 시 인터넷으로 잠금 파일에 지정된 공식 Codex 의존성을 설치합니다. Linux는 x64·arm64용 의존성을 선택하며, 이 릴리스의 실기 검증 환경은 Ubuntu 24.04 x64입니다. [1.4.0 검증 범위](docs/VERIFICATION-1.4.0.md)
 
@@ -50,19 +55,21 @@
 
 이 코드는 이 PC의 확장과 로컬 프로그램 사이의 연결 코드입니다. ChatGPT OAuth 토큰이나 API 키가 아니며 다른 사람과 공유하지 마세요. 계정 로그인 정보는 공식 CLI 저장소에 그대로 남습니다. 브라우저 쿠키나 OAuth 토큰을 확장으로 복사하지 않습니다.
 
-시작 스크립트는 로그인 시 자동 실행을 등록하지 않습니다. 재부팅 후 다시 시작하세요. Windows 종료·재시작은 `Stop-Translate-AI.cmd` / `Restart-Translate-AI.cmd`를 사용합니다.
+Windows 시작 스크립트는 로그인 시 자동 실행을 등록하지 않으므로 재부팅 후 다시 시작하세요. Linux는 `sh Install-Translate-AI.sh`가 로그인 자동 시작을 함께 등록합니다(아래 참고). Windows 종료·재시작은 `Stop-Translate-AI.cmd` / `Restart-Translate-AI.cmd`를 사용합니다.
 
 ### Linux 설치와 앱 메뉴
 
 압축을 푼 폴더에서 실행하세요. `sudo`는 필요하지 않습니다.
 
 ```sh
-sh Install-Translate-AI.sh   # 앱 메뉴에 Translate AI 등록 (선택)
+sh Install-Translate-AI.sh   # 앱 메뉴 등록 + 로그인 시 자동 시작 (선택)
+sh Install-Translate-AI.sh --no-autostart   # 앱 메뉴만 등록, 자동 시작 해제
 sh Start-Translate-AI.sh     # 연결 프로그램 시작 + 연결 화면 열기
 sh Stop-Translate-AI.sh      # 이 설치 폴더의 연결 프로그램만 종료
 sh Restart-Translate-AI.sh   # 업데이트 후 재시작
 ```
 
+- 설치 후에는 데스크톱에 로그인할 때마다 연결 프로그램이 브라우저 창 없이 자동으로 켜집니다(`~/.config/autostart/translate-ai.desktop`). 재부팅 후 "ChatGPT 로컬 연결이 꺼져 있습니다"가 뜨지 않게 하려면 한 번 설치해 두세요.
 - 앱 메뉴의 **Translate AI**로 시작할 수 있고, 메뉴의 추가 동작에서 재시작·종료할 수 있습니다. 등록한 폴더를 옮겼거나 Node.js 설치 경로가 바뀌면 `sh Install-Translate-AI.sh`를 다시 실행하세요.
 - 확장은 Chrome의 `chrome://extensions` 또는 Edge의 `edge://extensions`에서 개발자 모드를 켜고 **이 폴더의 `extension`**을 로드합니다. 앱 메뉴 등록과 확장 설치는 별도입니다.
 - 시작·재시작에 `--no-open`을 붙이면 브라우저를 열지 않습니다. 시작 버튼을 다시 눌러도 연결 프로그램을 중복 실행하지 않습니다.
